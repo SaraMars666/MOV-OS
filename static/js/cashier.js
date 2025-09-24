@@ -8,12 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchButton = document.getElementById("product-search-button");
     const searchInput = document.getElementById("product-search-input");
     const resultsList = document.getElementById("product-search-results");
+    const barcodeInput = document.getElementById("barcode-input");
 
-    const tipoVentaInput = { value: "boleta" };
-    const formaPagoInput = document.getElementById("forma_pago");
+    const tipoVentaInputs = document.querySelectorAll('input[name="sale-type"]');
+    const formaPagoInputs = document.querySelectorAll('input[name="payment-method"]');
 
-    const tipoVentaButtons = [document.getElementById("boleta"), document.getElementById("factura")];
-    const formaPagoButtons = [document.getElementById("efectivo"), document.getElementById("debito"), document.getElementById("credito")];
+    let tipoVenta = "boleta";
+    let formaPago = "efectivo";
 
     let carrito = new Map();
     let totalCarrito = 0;
@@ -51,8 +52,13 @@ document.addEventListener("DOMContentLoaded", () => {
     function calcularVuelto() {
         const pagado = parseFloat(cantidadPagadaInput.value) || 0;
         const total = parseFloat(totalPriceElement.textContent.replace("$", "")) || 0;
-        const vuelto = pagado - total;
-        vueltoElement.textContent = `$${vuelto.toFixed(2)}`;
+        
+        if (formaPago === "efectivo") {
+            const vuelto = pagado - total;
+            vueltoElement.textContent = `$${vuelto.toFixed(2)}`;
+        } else {
+            vueltoElement.textContent = `$0.00`;
+        }
     }
 
     cantidadPagadaInput.addEventListener("input", calcularVuelto);
@@ -65,114 +71,172 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    searchButton.addEventListener("click", debounce(async () => {
-        const query = searchInput.value.trim();
-        if (!query) return showToast("Ingresa un término de búsqueda.", "warning");
-
+    async function searchProducts(query) {
         try {
             const res = await fetch(`/cashier/buscar-producto/?q=${query}`);
             const data = await res.json();
             resultsList.innerHTML = "";
 
             if (data.productos.length === 0) {
-                resultsList.innerHTML = "<li>No se encontraron productos.</li>";
+                resultsList.innerHTML = `<li class="list-group-item">No se encontraron productos.</li>`;
                 return;
             }
 
             data.productos.forEach(p => {
                 const li = document.createElement("li");
-                li.innerHTML = `${p.nombre} - $${p.precio_venta} 
-                    <button class="btn btn-success btn-sm ml-2" 
-                        data-id="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio_venta}">+</button>`;
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
+                li.innerHTML = `
+                    <span>${p.nombre} - $${p.precio_venta}</span>
+                    <button class="btn btn-success btn-sm" 
+                    data-id="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio_venta}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                `;
                 resultsList.appendChild(li);
             });
-        } catch {
+        } catch (err) {
+            console.error(err);
             showToast("Error en la búsqueda.", "danger");
         }
+    }
+
+    searchButton.addEventListener("click", debounce(() => {
+        const query = searchInput.value.trim();
+        if (!query) return showToast("Ingresa un término de búsqueda.", "warning");
+        searchProducts(query);
     }));
 
+    searchInput.addEventListener("keydown", (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const query = searchInput.value.trim();
+            if (!query) return showToast("Ingresa un término de búsqueda.", "warning");
+            searchProducts(query);
+        }
+    });
+
     resultsList.addEventListener("click", (e) => {
-        if (e.target.tagName === "BUTTON") {
-            const { id, nombre, precio } = e.target.dataset;
+        if (e.target.closest("button")) {
+            const button = e.target.closest("button");
+            const { id, nombre, precio } = button.dataset;
             agregarAlCarrito(parseInt(id), nombre, parseFloat(precio));
         }
     });
 
-    function agregarAlCarrito(productoId, nombre, precio) {
+    async function agregarAlCarrito(productoId, nombre, precio) {
         if (!productoId) return;
-        const cantidad = carrito.has(productoId) ? carrito.get(productoId).cantidad + 1 : 1;
-        carrito.set(productoId, { producto_id: productoId, nombre, precio, cantidad });
-        actualizarCarrito();
+
+        try {
+            // Revisa el stock antes de agregar al carrito
+            const res = await fetch(`/cashier/agregar-al-carrito/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken()
+                },
+                body: JSON.stringify({
+                    producto_id: productoId
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.error || "Error al agregar al carrito.", "danger");
+                return;
+            }
+
+            // Actualiza el carrito local con la respuesta del servidor
+            const item = data.carrito.find(item => item.producto_id === productoId);
+            if (item) {
+                carrito.set(productoId, {
+                    producto_id: item.producto_id,
+                    nombre: item.nombre,
+                    precio: item.precio,
+                    cantidad: item.cantidad
+                });
+                actualizarCarrito();
+                showToast("Producto agregado al carrito", "success");
+            }
+
+        } catch (err) {
+            console.error("Error al agregar al carrito:", err);
+            showToast("Error de conexión al agregar al carrito.", "danger");
+        }
     }
 
     function actualizarCarrito() {
         cartItemsContainer.innerHTML = "";
         totalCarrito = 0;
 
-        carrito.forEach(({ producto_id, nombre, precio, cantidad }) => {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${cantidad}</td>
-                <td>${nombre}</td>
-                <td>$${(cantidad * precio).toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-success btn-sm" data-id="${producto_id}" data-action="increment">+</button>
-                    <button class="btn btn-danger btn-sm" data-id="${producto_id}" data-action="decrement">-</button>
-                </td>
-            `;
-            cartItemsContainer.appendChild(row);
-            totalCarrito += cantidad * precio;
-        });
+        if (carrito.size === 0) {
+            cartItemsContainer.innerHTML = `<tr><td colspan="4" class="text-center">No hay productos en el carrito.</td></tr>`;
+        } else {
+            carrito.forEach(({ producto_id, nombre, precio, cantidad }) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${cantidad}</td>
+                    <td>${nombre}</td>
+                    <td>$${(cantidad * precio).toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-success btn-sm" data-id="${producto_id}" data-action="increment">+</button>
+                        <button class="btn btn-danger btn-sm" data-id="${producto_id}" data-action="decrement">-</button>
+                    </td>
+                `;
+                cartItemsContainer.appendChild(row);
+            });
+        }
 
+        totalCarrito = Array.from(carrito.values()).reduce((acc, item) => acc + (item.cantidad * item.precio), 0);
         totalPriceElement.textContent = `$${totalCarrito.toFixed(2)}`;
         calcularVuelto();
     }
 
     cartItemsContainer.addEventListener("click", (e) => {
-        const productoId = parseInt(e.target.dataset.id);
+        const targetButton = e.target.closest("button");
+        if (!targetButton) return;
+
+        const productoId = parseInt(targetButton.dataset.id);
         if (!productoId) return;
 
         const item = carrito.get(productoId);
-        if (e.target.dataset.action === "increment") item.cantidad++;
-        if (e.target.dataset.action === "decrement") {
+        if (targetButton.dataset.action === "increment") {
+            item.cantidad++;
+        } else if (targetButton.dataset.action === "decrement") {
             item.cantidad--;
             if (item.cantidad <= 0) carrito.delete(productoId);
         }
-
         actualizarCarrito();
     });
 
-    tipoVentaButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-            tipoVentaButtons.forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            tipoVentaInput.value = btn.id;
+    tipoVentaInputs.forEach(input => {
+        input.addEventListener("change", () => {
+            tipoVenta = input.id;
         });
     });
 
-    formaPagoButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-            formaPagoButtons.forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-
-            formaPagoInput.value = btn.id;
-
-            if (btn.id === "debito" || btn.id === "credito") {
+    formaPagoInputs.forEach(input => {
+        input.addEventListener("change", () => {
+            formaPago = input.id;
+            if (formaPago === "debito" || formaPago === "credito") {
                 cantidadPagadaInput.value = totalCarrito.toFixed(2);
             } else {
                 cantidadPagadaInput.value = "";
             }
-
             calcularVuelto();
         });
     });
 
+    // 📌 CAMBIO CLAVE: Se elimina la ventana de confirmación para que la compra se procese inmediatamente
     confirmarCompraButton.addEventListener("click", async () => {
-        if (!formaPagoInput.value) return showToast("Selecciona un método de pago", "danger");
-        if (carrito.size === 0) return showToast("El carrito está vacío", "warning");
+        if (carrito.size === 0) {
+            showToast("El carrito está vacío", "warning");
+            return;
+        }
 
-        const confirmar = confirm("¿Deseas imprimir el comprobante?");
-        if (!confirmar) return;
+        if (formaPago === "efectivo" && parseFloat(cantidadPagadaInput.value) < totalCarrito) {
+            showToast("El monto pagado es insuficiente.", "warning");
+            return;
+        }
 
         try {
             const res = await fetch("/cashier/", {
@@ -183,20 +247,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
                 body: JSON.stringify({
                     carrito: Array.from(carrito.values()),
-                    tipo_venta: tipoVentaInput.value,
-                    forma_pago: formaPagoInput.value,
+                    tipo_venta: tipoVenta,
+                    forma_pago: formaPago,
                     cliente_paga: parseFloat(cantidadPagadaInput.value) || 0
                 })
             });
 
             const data = await res.json();
-            if (!res.ok || !data.success) return showToast(data.error || "Error al confirmar", "danger");
+            if (!res.ok || !data.success) {
+                showToast(data.error || "Error al confirmar", "danger");
+                return;
+            }
 
             showToast("Compra confirmada con éxito", "success");
             carrito.clear();
             actualizarCarrito();
 
+            // Abre el comprobante de forma instantánea
             if (data.reporte_url) window.open(data.reporte_url, "_blank");
+
         } catch (err) {
             console.error("Error al confirmar compra:", err);
             showToast("Error al procesar la compra", "danger");
@@ -204,6 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (cerrarCajaBtn) {
+        // 📌 CAMBIO CLAVE: Se elimina la ventana de confirmación para que el cierre de caja sea inmediato
         cerrarCajaBtn.addEventListener("click", async () => {
             try {
                 const res = await fetch("/cashier/cerrar_caja/", {
@@ -224,5 +294,41 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast("Error al cerrar la caja", "danger");
             }
         });
+    }
+
+    // 📌 NUEVA LÓGICA PARA ESCANEAR CÓDIGO DE BARRAS
+    async function handleBarcodeScan() {
+        const barcode = barcodeInput.value.trim();
+        if (!barcode) return;
+
+        try {
+            const res = await fetch(`/cashier/buscar-producto/?q=${barcode}`);
+            const data = await res.json();
+
+            if (data.productos.length > 0) {
+                const product = data.productos[0];
+                agregarAlCarrito(product.id, product.nombre, parseFloat(product.precio_venta));
+                barcodeInput.value = "";
+            } else {
+                showToast("Producto no encontrado. Intenta de nuevo.", "warning");
+                barcodeInput.value = "";
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Error al buscar producto por código de barras.", "danger");
+        }
+    }
+
+    barcodeInput.addEventListener("keydown", (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleBarcodeScan();
+        }
+    });
+    
+    if (carrito.size === 0) {
+        cantidadPagadaInput.value = "";
+        totalPriceElement.textContent = `$0.00`;
+        vueltoElement.textContent = `$0.00`;
     }
 });

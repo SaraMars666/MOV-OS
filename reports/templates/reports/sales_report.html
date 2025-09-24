@@ -1,36 +1,56 @@
 {% extends 'base.html' %}
+{% load static %}
+{% block extra_styles %}
+
+<link rel="stylesheet" href="{% static 'css/print.css' %}" media="print">
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2>Reporte de Venta</h2>
-    <p><strong>ID Venta:</strong> {{ sale.id }}</p>
-    <p><strong>Empleado:</strong> {{ sale.empleado.username }}</p>
-    <p><strong>Fecha:</strong> {{ sale.fecha }}</p>
-    <hr>
-    <h3>Detalle de la Venta</h3>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio Unitario</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for detail in details %}
-            <tr>
-                <td>{{ detail.producto.nombre }}</td>
-                <td>{{ detail.cantidad }}</td>
-                <td>${{ detail.precio_unitario|floatformat:2 }}</td>
-                <td>${{ detail.cantidad|floatformat:2|floatformat:2|add:detail.precio_unitario }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <p><strong>Total Venta:</strong> ${{ sale.total }}</p>
-    <button onclick="window.print()" class="btn btn-primary">Imprimir</button>
-    <br>
-    <a href="{% url 'sales_history' %}" class="btn btn-secondary mt-3">Volver al Historial de Ventas</a>
+
+<div class="container mt-4">
+<h2 class="mb-3">Detalle de Venta #{{ venta.id }}</h2>
+
+<p><strong>Fecha:</strong> {{ venta.fecha|date:"d M Y, H:i" }}</p>
+<p><strong>Empleado:</strong> {{ venta.empleado.username }}</p>
+<p><strong>Tipo de Venta:</strong> {{ venta.get_tipo_venta_display }}</p>
+<p><strong>Forma de Pago:</strong> {{ venta.get_forma_pago_display }}</p>
+<p><strong>Total:</strong> ${{ venta.total|floatformat:2 }}</p>
+
+{% if venta.forma_pago == "efectivo" %}
+    <p><strong>Cliente Pagó:</strong> ${{ venta.cliente_paga|default:"0.00"|floatformat:2 }}</p>
+    <p><strong>Vuelto Entregado:</strong> ${{ venta.vuelto_entregado|default:"0.00"|floatformat:2 }}</p>
+{% endif %}
+
+<h4 class="mt-4">Productos Vendidos:</h4>
+<table class="table table-bordered table-sm">
+    <thead class="table-light">
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in detalles %}
+        <tr>
+            <td>{{ item.producto.nombre }}</td>
+            <td>{{ item.cantidad }}</td>
+            <td>${{ item.precio_unitario|floatformat:2 }}</td>
+            <td>${{ item.subtotal|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+    <button onclick="window.print()" class="btn btn-primary">Imprimir Detalle</button>
+    <button onclick="history.back()" class="btn btn-secondary">Volver</button>
+</div>
+
 </div>
 {% endblock %}
+
+<div class="mt-4 d-flex gap-2 no-print">
+
+
+</div>

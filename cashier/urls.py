@@ -15,6 +15,7 @@ urlpatterns = [
     path('limpiar-carrito/', views.limpiar_carrito, name='limpiar_carrito'),
     path('detalle-caja/<int:caja_id>/', views.detalle_caja, name='detalle_caja'),
     path('reporte/<int:venta_id>/', views.reporte_venta, name='reporte_venta'),
+    path('borrar-historial-caja/', views.delete_all_sales_and_cash_history, name='delete_all_sales_and_cash_history'),
 
 
     

@@ -14,13 +14,13 @@
 
 /* Estilo de botones */
 .btn-group .btn {
-    background-color: #5865f2;
+    background-color: #282a40;
     color: #ffffff;
     transition: background-color 0.3s, transform 0.2s;
 }
 
 .btn-group .btn:hover {
-    background-color: #4752c4;
+    background-color: #1f223f;
     transform: scale(1.05);
 }
 
@@ -46,9 +46,9 @@
 
 /* Inputs */
 .form-control {
-    background-color: #2f3136;
+    background-color: #ffffff; /* Fondo blanco para los campos de texto */
     border: 1px solid #40444b;
-    color: #ffffff;
+    color: #000000; /* Texto en color negro */
     border-radius: 8px;
 }
 

@@ -1,45 +1,52 @@
 {% extends 'base.html' %}
+{% load static %}
+{% block extra_styles %}
+
+<link rel="stylesheet" href="{% static 'css/print.css' %}" media="print">
+{% endblock %}
 
 {% block content %}
+
 <div class="container mt-4">
-    <h2 class="mb-3">Detalle de Venta #{{ venta.id }}</h2>
+<h2 class="mb-3">Detalle de Venta #{{ venta.id }}</h2>
 
-    <p><strong>Fecha:</strong> {{ venta.fecha|date:"d M Y, H:i" }}</p>
-    <p><strong>Empleado:</strong> {{ venta.empleado.username }}</p>
-    <p><strong>Tipo de Venta:</strong> {{ venta.get_tipo_venta_display }}</p>
-    <p><strong>Forma de Pago:</strong> {{ venta.get_forma_pago_display }}</p>
-    <p><strong>Total:</strong> ${{ venta.total|floatformat:2 }}</p>
+<p><strong>Fecha:</strong> {{ venta.fecha|date:"d M Y, H:i" }}</p>
+<p><strong>Empleado:</strong> {{ venta.empleado.username }}</p>
+<p><strong>Tipo de Venta:</strong> {{ venta.get_tipo_venta_display }}</p>
+<p><strong>Forma de Pago:</strong> {{ venta.get_forma_pago_display }}</p>
+<p><strong>Total:</strong> ${{ venta.total|floatformat:2 }}</p>
 
-    {% if venta.forma_pago == "efectivo" %}
-        <p><strong>Cliente Pagó:</strong> ${{ venta.cliente_paga|default:"0.00"|floatformat:2 }}</p>
-        <p><strong>Vuelto Entregado:</strong> ${{ venta.vuelto_entregado|default:"0.00"|floatformat:2 }}</p>
-    {% endif %}
+{% if venta.forma_pago == "efectivo" %}
+    <p><strong>Cliente Pagó:</strong> ${{ venta.cliente_paga|default:"0.00"|floatformat:2 }}</p>
+    <p><strong>Vuelto Entregado:</strong> ${{ venta.vuelto_entregado|default:"0.00"|floatformat:2 }}</p>
+{% endif %}
 
-    <h4 class="mt-4">Productos Vendidos:</h4>
-    <table class="table table-bordered table-sm">
-        <thead class="table-light">
-            <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio Unitario</th>
-                <th>Subtotal</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in detalles %}
-            <tr>
-                <td>{{ item.producto.nombre }}</td>
-                <td>{{ item.cantidad }}</td>
-                <td>${{ item.precio_unitario|floatformat:2 }}</td>
-                <td>${{ item.subtotal|floatformat:2 }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<h4 class="mt-4">Productos Vendidos:</h4>
+<table class="table table-bordered table-sm">
+    <thead class="table-light">
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in detalles %}
+        <tr>
+            <td>{{ item.producto.nombre }}</td>
+            <td>{{ item.cantidad }}</td>
+            <td>${{ item.precio_unitario|floatformat:2 }}</td>
+            <td>${{ item.subtotal|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
-    <div class="mt-4 d-flex gap-2">
-        <button onclick="window.print()" class="btn btn-primary">Imprimir Detalle</button>
-        <a href="{% url 'cashier_dashboard' %}" class="btn btn-secondary">Volver</a>
-    </div>
+<div class="mt-4 d-flex gap-2 no-print">
+    <button onclick="window.print()" class="btn btn-primary">Imprimir Detalle</button>
+    <a href="{% url 'cashier_dashboard' %}" class="btn btn-secondary">Volver</a>
+</div>
+
 </div>
 {% endblock %}

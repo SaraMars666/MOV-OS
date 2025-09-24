@@ -2,17 +2,22 @@
 {% load static %}
 
 {% block extra_styles %}
-<link rel="stylesheet" href="{% static 'css/cashier.css' %}">
-<script src="{% static 'js/cashier.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/cashier.css' %}">   
+    <script src="{% static 'js/cashier.js' %}"></script>
 {% endblock %}
 
 {% block content %}
+
 <div class="container cashier-container">
     <div class="text-center mb-4">
         <h2>Bienvenido, {{ user.username }}</h2>
         <h3>Modo Cajero</h3>
     </div>
 
+    <div id="alertPlaceholder" class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1050; width: 350px;">
+        <!-- Aquí se mostrarán las alertas dinámicas -->
+    </div>
+    
     <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; width: 350px;">
         {% for message in mensajes %}
             <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% else %}success{% endif %} border-0 show" role="alert">
@@ -24,78 +29,125 @@
         {% endfor %}
     </div>
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card p-3">
-                <h4>Buscar productos</h4>
-                <form id="product-search-form">
-                    <input type="text" id="product-search-input" class="form-control mb-2" placeholder="Buscar por nombre o código de barras">
-                    <button type="button" id="product-search-button" class="btn btn-primary w-100">Buscar</button>
+    <div class="row justify-content-center">
+        <!-- Buscar productos -->
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card p-3 h-100">
+                <h4 class="card-title">Buscar productos</h4>
+                <form id="product-search-form" class="mb-3">
+                    <input type="text" id="product-search-input" class="form-control" placeholder="Buscar por nombre o código de barras">
+                    <button type="button" id="product-search-button" class="btn btn-primary w-100 mt-2">Buscar</button>
                 </form>
-                <ul id="product-search-results" class="list-group mt-3"></ul>
+                <div class="flex-grow-1 overflow-auto" style="max-height: 400px;">
+                    <ul id="product-search-results" class="list-group">
+                        <!-- Los resultados de la búsqueda se renderizarán aquí -->
+                    </ul>
+                </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card p-3">
-                <h4>Carrito de Compras</h4>
+        <!-- Carrito de Compras -->
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card p-3 h-100 d-flex flex-column">
+                <h4 class="card-title">Carrito de Compras</h4>
                 <input type="text" id="barcode-input" class="form-control mb-2" placeholder="Código de barras">
-                <table class="table table-dark">
-                    <thead>
-                        <tr><th>Cant.</th><th>Producto</th><th>Total</th><th>Acción</th></tr>
-                    </thead>
-                    <tbody id="cart-items">
-                        <tr><td colspan="4" class="text-center">No hay productos en el carrito.</td></tr>
-                    </tbody>
-                </table>
-                <p class="lead">Total: $<span id="total-price">0.00</span></p>
+                <div class="table-responsive flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Cant.</th>
+                                <th>Producto</th>
+                                <th>Total</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-items">
+                            <tr>
+                                <td colspan="4" class="text-center">No hay productos en el carrito.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-auto pt-3 border-top">
+                    <p class="lead text-end mb-0">Total: $<span id="total-price">0.00</span></p>
+                </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card p-3">
-                <h4>Opciones de Pago</h4>
-
-                <input type="hidden" id="tipo_venta" value="boleta">
-                <input type="hidden" id="forma_pago" value="">
+        <!-- Opciones de Pago -->
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card p-3 h-100">
+                <h4 class="card-title">Opciones de Pago</h4>
 
                 <div class="mb-3">
-                    <label class="form-label">Tipo de Venta</label>
-                    <div class="btn-group w-100">
-                        <button type="button" class="btn btn-outline-primary" id="boleta">Boleta</button>
-                        <button type="button" class="btn btn-outline-primary" id="factura">Factura</button>
+                    <label class="form-label fw-bold">Tipo de Venta</label>
+                    <div class="btn-group w-100" role="group" id="sale-type-group">
+                        <input type="radio" class="btn-check" name="sale-type" id="boleta" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="boleta">Boleta</label>
+                        <input type="radio" class="btn-check" name="sale-type" id="factura" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="factura">Factura</label>
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Forma de Pago</label>
-                    <div class="btn-group w-100">
-                        <button type="button" class="btn btn-outline-primary" id="efectivo">Efectivo</button>
-                        <button type="button" class="btn btn-outline-primary" id="debito">Débito</button>
-                        <button type="button" class="btn btn-outline-primary" id="credito">Crédito</button>
+                    <label class="form-label fw-bold">Forma de Pago</label>
+                    <div class="btn-group w-100" role="group" id="payment-method-group">
+                        <input type="radio" class="btn-check" name="payment-method" id="efectivo" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="efectivo">Efectivo</label>
+                        <input type="radio" class="btn-check" name="payment-method" id="debito" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="debito">Débito</label>
+                        <input type="radio" class="btn-check" name="payment-method" id="credito" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="credito">Crédito</label>
                     </div>
                 </div>
 
-                <label for="correo_cliente">Correo del Cliente (opcional):</label>
-                <input type="email" id="correo_cliente" class="form-control mb-2" placeholder="ejemplo@correo.com">
+                <div class="mb-3">
+                    <label for="correo_cliente" class="form-label">Correo del Cliente (opcional):</label>
+                    <input type="email" id="correo_cliente" class="form-control" placeholder="ejemplo@correo.com">
+                </div>
 
-                <label for="cantidad_pagada">Cliente Paga:</label>
-                <input type="number" id="cantidad_pagada" class="form-control mb-2" placeholder="Ingrese el monto pagado">
-
-                <label>Vuelto:</label>
-                <span id="vuelto" class="form-control mb-2">$0.00</span>
-
-                <button type="button" id="confirmar-compra" class="btn btn-success w-100">Confirmar Compra</button>
+                <div class="mb-3">
+                    <label for="cantidad_pagada" class="form-label">Cliente Paga:</label>
+                    <input type="number" id="cantidad_pagada" class="form-control" placeholder="Ingrese el monto pagado">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Vuelto:</label>
+                    <span id="vuelto" class="form-control bg-white text-black">$0.00</span>
+                </div>
+                
+                <button type="button" id="confirmar-compra" class="btn btn-success w-100 mt-auto">Confirmar Compra</button>
             </div>
         </div>
     </div>
 
-    <div class="text-center mt-4">
-        <button type="button" id="close-cash-button" class="btn btn-danger">Cerrar Caja</button>
-    </div>
-
-    <div class="text-center mt-4">
-        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Volver</a>
+    <div class="row justify-content-center mt-4">
+        <div class="col-12 col-md-6 col-lg-4 mb-3">
+            <button type="button" id="close-cash-button" class="btn btn-danger w-100">Cerrar Caja</button>
+        </div>
+        <div class="col-12 col-md-6 col-lg-4 mb-3">
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary w-100">Volver</a>
+        </div>
     </div>
 </div>
+
+<!-- Modal para confirmar la compra y preguntar sobre la impresión -->
+<div class="modal fade" id="confirmPurchaseModal" tabindex="-1" aria-labelledby="confirmPurchaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmPurchaseModalLabel">Confirmar Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                ¿Esta seguro de la venta?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                <button type="button" class="btn btn-primary" id="confirmAndPrintBtn">Sí</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

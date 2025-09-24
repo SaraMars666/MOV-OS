@@ -3,30 +3,34 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Bootstrap CSS -->
+    <!-- Bootstrap CSS - Utilizado para un estilo y diseño responsivo -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Tu CSS personalizado -->
+    <!-- Hoja de estilos personalizada -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     
+    <!-- Título de la página, el cual puede ser sobrescrito por cada template hijo -->
     <title>{% block title %}MOVOS{% endblock %}</title>
 
+    <!-- Script para inyectar el token CSRF en una cookie.
+         Es útil para peticiones AJAX. -->
     <script>
         document.cookie = "csrftoken={{ csrf_token }}";
     </script>
 
+    <!-- Espacio para estilos adicionales de los templates hijos -->
     {% block extra_styles %}{% endblock %}
 </head>
 
 <body>
-    <!-- Navbar -->
+    <!-- Barra de navegación (Navbar) -->
     {% if user.is_authenticated and user.is_staff %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="#">MOV-OS</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -42,17 +46,17 @@
     </nav>
     {% endif %}
 
-    <!-- Contenido -->
+    <!-- Contenido principal de la página. Este es el bloque que se sobrescribe. -->
     <main class="container mt-4">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
+    <!-- Pie de página (Footer) -->
     <footer class="bg-dark text-center text-light py-3 mt-4">
         <p class="mb-0">&copy; 2024 MOV-OS. Todos los derechos reservados.</p>
     </footer>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap JS (bundle) - Incluye Popper y jQuery si son necesarios -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

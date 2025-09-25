@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.utils.dateparse import parse_date
+<<<<<<< HEAD
 from django.db.models import Q, Sum, F, Count
 from django.db.models.functions import Cast
 from django.utils import timezone
@@ -10,6 +11,20 @@ from decimal import Decimal
 
 from cashier.models import Venta, VentaDetalle, AperturaCierreCaja  
 from auth_app.models import User
+=======
+from django.db.models import Q
+from cashier.models import Venta, VentaDetalle, AperturaCierreCaja  
+from auth_app.models import User
+from django.utils.timezone import localtime, make_aware
+import datetime
+from django.shortcuts import render
+from django.db.models import Sum, F, Count
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from datetime import timedelta
+
+
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 
 @login_required
 def report_dashboard(request):
@@ -171,6 +186,7 @@ def sales_report(request, sale_id):
 @login_required
 def advanced_reports(request):
     """
+<<<<<<< HEAD
     Reporte Avanzado que muestra los KPIs:
       - Ingreso Total por Ventas
       - Costo Total de Mercancía Vendida (CMV)
@@ -286,10 +302,30 @@ def advanced_reports(request):
     
     top_selling_products = VentaDetalle.objects.filter(
         venta__fecha__gte=fecha_inicio, venta__fecha__lte=fecha_fin
+=======
+    Genera reportes avanzados con filtros de tiempo y cantidad de productos.
+    """
+    # Lógica de filtros de tiempo
+    filtro_tiempo = request.GET.get('filtro', 'mensual')
+    fecha_inicio = timezone.now() - timedelta(days=30) 
+
+    if filtro_tiempo == 'semanal':
+        fecha_inicio = timezone.now() - timedelta(days=7)
+    elif filtro_tiempo == 'anual':
+        fecha_inicio = timezone.now() - timedelta(days=365)
+    
+    # Lógica para el filtro de cantidad de productos
+    filtro_top = int(request.GET.get('top', 10))
+    
+    # 📊 Reporte 1: Productos más vendidos (por cantidad)
+    top_selling_products = VentaDetalle.objects.filter(
+        venta__fecha__gte=fecha_inicio
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     ).values('producto__nombre').annotate(
         total_cantidad=Sum('cantidad')
     ).order_by('-total_cantidad')[:filtro_top]
 
+<<<<<<< HEAD
     # Formateo de los números clave
     context = {
         'ingreso_total': "$" + format_clp(ingreso_total),
@@ -310,5 +346,45 @@ def advanced_reports(request):
         'filtro_top_actual': filtro_top,
     }
     
+=======
+    # 📈 Reporte 2: Productos con mayor ingreso (monto de venta)
+    top_revenue_products = VentaDetalle.objects.filter(
+        venta__fecha__gte=fecha_inicio
+    ).values('producto__nombre').annotate(
+        total_ingreso=Sum(F('cantidad') * F('producto__precio_venta'))
+    ).order_by('-total_ingreso')[:filtro_top]
+
+    # 💰 Reporte 3: Productos con mayor ganancia (ingreso - costo)
+    top_profit_products = VentaDetalle.objects.filter(
+        venta__fecha__gte=fecha_inicio
+    ).values('producto__nombre').annotate(
+        total_ganancia=Sum(F('cantidad') * (F('producto__precio_venta') - F('producto__precio_compra')))
+    ).order_by('-total_ganancia')[:filtro_top]
+
+    # 💳 Ventas por Tipo de Pago
+    sales_by_payment_type = Venta.objects.filter(
+        fecha__gte=fecha_inicio
+    ).values('forma_pago').annotate(
+        total_monto=Sum('total')
+    )
+    
+    # Convertir a float para JavaScript
+    for venta in sales_by_payment_type:
+        venta['total_monto'] = float(venta['total_monto'])
+    for producto in top_revenue_products:
+        producto['total_ingreso'] = float(producto['total_ingreso'])
+    for producto in top_profit_products:
+        producto['total_ganancia'] = float(producto['total_ganancia'])
+
+    context = {
+        'top_selling_products': list(top_selling_products),
+        'top_revenue_products': list(top_revenue_products),
+        'top_profit_products': list(top_profit_products),
+        'sales_by_payment_type': list(sales_by_payment_type),
+        'filtro_actual': filtro_tiempo,
+        'filtro_top_actual': filtro_top,
+    }
+
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     return render(request, 'reports/advanced_reports.html', context)
 

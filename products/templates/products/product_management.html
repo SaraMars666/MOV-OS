@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {% extends 'base.html' %}
 {% block content %}
 <div class="container">
@@ -230,6 +231,186 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('modalProductPrecioVenta').textContent = `$${productPrecioVenta}`;
             document.getElementById('modalProductCantidad').textContent = productCantidad;
             document.getElementById('modalProductStock').textContent = productStock;
+=======
+{% extends 'base.html' %}{% block content %}
+<div class="container"><h1>Gestión de Productos</h1>{% if messages %}<div class="messages">{% for message in messages %}<div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endfor %}</div>{% endif %}<h4 class="mb-3">Total de Productos: {{ total_products_count }}</h4>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <form method="get" class="d-flex align-items-center me-3 flex-grow-1">
+        <input type="text" name="search" class="form-control me-2" placeholder="Buscar productos por nombre, código o descripción..." value="{{ search_query }}">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+    </form>
+
+    {# Selector de filas por página #}
+    <div class="mb-0 d-flex justify-content-end align-items-center" style="margin-bottom: 0 !important;">
+        <label for="perPageSelect" class="form-label me-2 mb-0">Mostrar:</label>
+        <select class="form-select w-auto" id="perPageSelect" onchange="
+            var currentSearch = '{{ search_query }}';
+            var currentSortBy = '{{ sort_by }}';
+            var currentOrder = '{{ order }}';
+            var newUrl = '?page=1&per_page=' + this.value;
+            if (currentSearch) {
+                newUrl += '&search=' + currentSearch;
+            }
+            if (currentSortBy) {
+                newUrl += '&sort_by=' + currentSortBy + '&order=' + currentOrder;
+            }
+            location.href = newUrl;
+        ">
+            {% for num in per_page_options %}
+            <option value="{{ num }}" {% if num == per_page %}selected{% endif %}>
+                {{ num }} filas
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover product-table">
+        <thead class="thead-dark">
+            <tr>
+                {# Encabezados con enlaces de ordenamiento #}
+                <th style="width: 25%;">
+                    <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=nombre&order={% if sort_by == 'nombre' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
+                        NOMBRE
+                        {% if sort_by == 'nombre' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                    </a>
+                </th>
+                <th>
+                    <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=codigo1&order={% if sort_by == 'codigo1' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
+                        CÓDIGO 1
+                        {% if sort_by == 'codigo1' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                    </a>
+                </th>
+                <th>
+                    <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=codigo2&order={% if sort_by == 'codigo2' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
+                        CÓDIGO 2
+                        {% if sort_by == 'codigo2' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                    </a>
+                </th>
+                <th>
+                    <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=proveedor&order={% if sort_by == 'proveedor' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
+                        PROVEEDOR
+                        {% if sort_by == 'proveedor' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                    </a>
+                </th>
+                <th class="text-end">
+                    <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=precio_venta&order={% if sort_by == 'precio_venta' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
+                        PRECIO VENTA
+                        {% if sort_by == 'precio_venta' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                    </a>
+                </th>
+                <th class="text-center">
+                    <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=stock&order={% if sort_by == 'stock' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
+                        STOCK
+                        {% if sort_by == 'stock' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                    </a>
+                </th>
+                <th class="text-center">ACCIONES</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr class="product-row" data-product-name="{{ product.nombre|default:"N/A" }}" data-product-description="{{ product.descripcion|default:"Sin descripción" }}" data-product-codigo1="{{ product.producto_id }}" data-product-codigo2="{{ product.codigo_alternativo|default:"N/A" }}" data-product-proveedor="{{ product.proveedor|default:"N/A" }}" data-product-fecha="{{ product.fecha_ingreso_producto|date:"Y-m-d"|default:"N/A" }}" data-product-preciocompra="{{ product.precio_compra|floatformat:2|default:"0.00" }}" data-product-precioventa="{{ product.precio_venta|floatformat:2|default:"0.00" }}" data-product-cantidad="{{ product.cantidad }}" data-product-stock="{{ product.stock }}">
+                <td class="product-name-cell" style="word-wrap: break-word;">{{ product.nombre|default:"N/A" }}</td>
+                <td>{{ product.producto_id }}</td>
+                <td>{{ product.codigo_alternativo|default:"N/A" }}</td>
+                <td>{{ product.proveedor|default:"N/A" }}</td>
+                <td class="text-end">${{ product.precio_venta|floatformat:2|default:"0.00" }}</td>
+                <td class="text-center">{{ product.stock }}</td>
+                <td class="text-center actions-cell" onclick="event.stopPropagation();">
+                    <a href="{% url 'edit_product' product.id %}" class="btn btn-warning btn-sm">Editar</a>
+                    <form method="post" action="{% url 'delete_product' product.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de que quieres eliminar este producto?');">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">No hay productos registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<nav aria-label="Page navigation" class="mt-3">
+    <ul class="pagination justify-content-end align-items-center">
+        <li class="page-item {% if not products.has_previous %}disabled{% endif %}">
+            <a class="page-link" 
+                href="{% if products.has_previous %}?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by={{ sort_by }}&order={{ order }}{% else %}#{% endif %}" 
+                aria-label="Primero">
+                &laquo;
+            </a>
+        </li>
+        <li class="page-item {% if not products.has_previous %}disabled{% endif %}">
+            <a class="page-link" 
+                href="{% if products.has_previous %}?page={{ products.previous_page_number }}&search={{ search_query }}&per_page={{ per_page }}&sort_by={{ sort_by }}&order={{ order }}{% else %}#{% endif %}" 
+                aria-label="Anterior">
+                &lsaquo;
+            </a>
+        </li>
+
+        <li class="page-item disabled">
+            <span class="page-link">Página {{ products.number }} de {{ products.paginator.num_pages }}</span>
+        </li>
+
+        <li class="page-item {% if not products.has_next %}disabled{% endif %}">
+            <a class="page-link" 
+                href="{% if products.has_next %}?page={{ products.next_page_number }}&search={{ search_query }}&per_page={{ per_page }}&sort_by={{ sort_by }}&order={{ order }}{% else %}#{% endif %}" 
+                aria-label="Siguiente">
+                &rsaquo;
+            </a>
+        </li>
+        <li class="page-item {% if not products.has_next %}disabled{% endif %}">
+            <a class="page-link" 
+                href="{% if products.has_next %}?page={{ products.paginator.num_pages }}&search={{ search_query }}&per_page={{ per_page }}&sort_by={{ sort_by }}&order={{ order }}{% else %}#{% endif %}" 
+                aria-label="Último">
+                &raquo;
+            </a>
+        </li>
+    </ul>
+</nav>
+<br>    
+
+<a href="{% url 'create_product' %}" class="btn btn-primary">Agregar Producto</a>
+<br><br>
+<a href="{% url 'upload_products' %}" class="btn btn-success">Cargar Productos por Excel</a>
+<a href="{% url 'export_products_to_excel' %}" class="btn btn-info">Exportar a Excel</a>
+<br><br>
+<a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Volver</a>
+</div>
+<!-- Modal para Detalles del Producto -->
+ <div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="productDetailsModalLabel">Detalles del Producto</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p><strong>Nombre:</strong> <span id="modalProductName"></span></p><p><strong>Descripción:</strong> <span id="modalProductDescription"></span></p><p><strong>Código 1:</strong> <span id="modalProductCodigo1"></span></p><p><strong>Código 2:</strong> <span id="modalProductCodigo2"></span></p><p><strong>Proveedor:</strong> <span id="modalProductProveedor"></span></p><p><strong>Fecha de Ingreso:</strong> <span id="modalProductFecha"></span></p><p><strong>Precio de Compra:</strong> <span id="modalProductPrecioCompra"></span></p><p><strong>Precio de Venta:</strong> <span id="modalProductPrecioVenta"></span></p><p><strong>Cantidad:</strong> <span id="modalProductCantidad"></span></p><p><strong>Stock:</strong> <span id="modalProductStock"></span></p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div></div></div></div>{% endblock %}{% block scripts %}<script>document.addEventListener('DOMContentLoaded', function() {var productRows = document.querySelectorAll('.product-row');var productDetailsModal = new bootstrap.Modal(document.getElementById('productDetailsModal'));    productRows.forEach(function(row) {
+        row.style.cursor = &#39;pointer&#39;; // Cambio el cursor para que parezca clicable
+        row.addEventListener(&#39;click&#39;, function() {
+            // Obtengo los datos del producto desde los atributos de datos de la fila
+            var productName = this.getAttribute(&#39;data-product-name&#39;);
+            var productDescription = this.getAttribute(&#39;data-product-description&#39;);
+            var productCodigo1 = this.getAttribute(&#39;data-product-codigo1&#39;);
+            var productCodigo2 = this.getAttribute(&#39;data-product-codigo2&#39;);
+            var productProveedor = this.getAttribute(&#39;data-product-proveedor&#39;);
+            var productFecha = this.getAttribute(&#39;data-product-fecha&#39;);
+            var productPrecioCompra = this.getAttribute(&#39;data-product-preciocompra&#39;);
+            var productPrecioVenta = this.getAttribute(&#39;data-product-precioventa&#39;);
+            var productCantidad = this.getAttribute(&#39;data-product-cantidad&#39;);
+            var productStock = this.getAttribute(&#39;data-product-stock&#39;);
+
+            // Lleno el modal con los datos del producto
+            document.getElementById(&#39;modalProductName&#39;).textContent = productName;
+            document.getElementById(&#39;modalProductDescription&#39;).textContent = productDescription;
+            document.getElementById(&#39;modalProductCodigo1&#39;).textContent = productCodigo1;
+            document.getElementById(&#39;modalProductCodigo2&#39;).textContent = productCodigo2;
+            document.getElementById(&#39;modalProductProveedor&#39;).textContent = productProveedor;
+            document.getElementById(&#39;modalProductFecha&#39;).textContent = productFecha;
+            document.getElementById(&#39;modalProductPrecioCompra&#39;).textContent = `$${productPrecioCompra}`;
+            document.getElementById(&#39;modalProductPrecioVenta&#39;).textContent = `$${productPrecioVenta}`;
+            document.getElementById(&#39;modalProductCantidad&#39;).textContent = productCantidad;
+            document.getElementById(&#39;modalProductStock&#39;).textContent = productStock;
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
             
             // Muestro el modal
             productDetailsModal.show();

@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 {% block extra_styles %}
     <link rel="stylesheet" href="{% static 'css/cashier.css' %}">   
     <script src="{% static 'js/cashier.js' %}"></script>
@@ -75,6 +78,7 @@
             </div>
         </div>
 
+<<<<<<< HEAD
         <!-- Opciones de Pago y Tipo de Venta -->
         <div class="col-12 col-md-6 col-lg-4 mb-4">
             <div class="card p-3 h-100">
@@ -130,6 +134,48 @@
                 <div class="mb-3">
                     <label class="form-label">Vuelto</label>
                     <p id="vuelto">$0.00</p>
+=======
+        <!-- Opciones de Pago -->
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card p-3 h-100">
+                <h4 class="card-title">Opciones de Pago</h4>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tipo de Venta</label>
+                    <div class="btn-group w-100" role="group" id="sale-type-group">
+                        <input type="radio" class="btn-check" name="sale-type" id="boleta" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="boleta">Boleta</label>
+                        <input type="radio" class="btn-check" name="sale-type" id="factura" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="factura">Factura</label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Forma de Pago</label>
+                    <div class="btn-group w-100" role="group" id="payment-method-group">
+                        <input type="radio" class="btn-check" name="payment-method" id="efectivo" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="efectivo">Efectivo</label>
+                        <input type="radio" class="btn-check" name="payment-method" id="debito" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="debito">Débito</label>
+                        <input type="radio" class="btn-check" name="payment-method" id="credito" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="credito">Crédito</label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="correo_cliente" class="form-label">Correo del Cliente (opcional):</label>
+                    <input type="email" id="correo_cliente" class="form-control" placeholder="ejemplo@correo.com">
+                </div>
+
+                <div class="mb-3">
+                    <label for="cantidad_pagada" class="form-label">Cliente Paga:</label>
+                    <input type="number" id="cantidad_pagada" class="form-control" placeholder="Ingrese el monto pagado">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Vuelto:</label>
+                    <span id="vuelto" class="form-control bg-white text-black">$0.00</span>
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                 </div>
                 
                 <button type="button" id="confirmar-compra" class="btn btn-success w-100 mt-auto">Confirmar Compra</button>
@@ -156,7 +202,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+<<<<<<< HEAD
                 ¿Está seguro de la venta?
+=======
+                ¿Esta seguro de la venta?
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>

@@ -12,8 +12,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const tipoVentaInputs = document.querySelectorAll('input[name="sale-type"]');
     const formaPagoInputs = document.querySelectorAll('input[name="payment-method"]');
+<<<<<<< HEAD
     const numeroTransaccionInput = document.getElementById("numero_transaccion");
     const transactionInfoContainer = document.getElementById("transaction-info");
+=======
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 
     let tipoVenta = "boleta";
     let formaPago = "efectivo";
@@ -21,11 +24,14 @@ document.addEventListener("DOMContentLoaded", () => {
     let carrito = new Map();
     let totalCarrito = 0;
 
+<<<<<<< HEAD
     // Función para formatear números: sin decimales y con separador de miles (punto)
     function formatChileanCurrency(number) {
         return number.toLocaleString('es-CL', { maximumFractionDigits: 0 });
     }
 
+=======
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     function getCSRFToken() {
         return document.cookie.split("; ").find(row => row.startsWith("csrftoken="))?.split("=")[1] || null;
     }
@@ -58,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function calcularVuelto() {
         const pagado = parseFloat(cantidadPagadaInput.value) || 0;
+<<<<<<< HEAD
         // Extraemos el total removiendo el "$" y formateado
         const total = parseFloat(totalPriceElement.textContent.replace("$", "").replace(/\./g, "")) || 0;
         
@@ -66,6 +73,15 @@ document.addEventListener("DOMContentLoaded", () => {
             vueltoElement.textContent = `$${formatChileanCurrency(vuelto)}`;
         } else {
             vueltoElement.textContent = `$0`;
+=======
+        const total = parseFloat(totalPriceElement.textContent.replace("$", "")) || 0;
+        
+        if (formaPago === "efectivo") {
+            const vuelto = pagado - total;
+            vueltoElement.textContent = `$${vuelto.toFixed(2)}`;
+        } else {
+            vueltoElement.textContent = `$0.00`;
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
         }
     }
 
@@ -94,7 +110,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 const li = document.createElement("li");
                 li.className = "list-group-item d-flex justify-content-between align-items-center";
                 li.innerHTML = `
+<<<<<<< HEAD
                     <span>${p.nombre} - $${formatChileanCurrency(parseFloat(p.precio_venta))}</span>
+=======
+                    <span>${p.nombre} - $${p.precio_venta}</span>
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                     <button class="btn btn-success btn-sm" 
                     data-id="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio_venta}">
                         <i class="fas fa-plus"></i>
@@ -184,7 +204,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.innerHTML = `
                     <td>${cantidad}</td>
                     <td>${nombre}</td>
+<<<<<<< HEAD
                     <td>$${formatChileanCurrency(cantidad * precio)}</td>
+=======
+                    <td>$${(cantidad * precio).toFixed(2)}</td>
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                     <td>
                         <button class="btn btn-success btn-sm" data-id="${producto_id}" data-action="increment">+</button>
                         <button class="btn btn-danger btn-sm" data-id="${producto_id}" data-action="decrement">-</button>
@@ -195,7 +219,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         totalCarrito = Array.from(carrito.values()).reduce((acc, item) => acc + (item.cantidad * item.precio), 0);
+<<<<<<< HEAD
         totalPriceElement.textContent = `$${formatChileanCurrency(totalCarrito)}`;
+=======
+        totalPriceElement.textContent = `$${totalCarrito.toFixed(2)}`;
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
         calcularVuelto();
     }
 
@@ -222,6 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+<<<<<<< HEAD
     // Función para mostrar u ocultar el campo número de transacción
     function handlePaymentMethodChange() {
         const selectedPayment = document.querySelector('input[name="payment-method"]:checked').value;
@@ -239,10 +268,18 @@ document.addEventListener("DOMContentLoaded", () => {
             if (formaPago === "debito" || formaPago === "credito" || formaPago === "transferencia") {
                 // Asigna el valor formateado sin decimales usando la función formatChileanCurrency
                 cantidadPagadaInput.value = formatChileanCurrency(totalCarrito);
+=======
+    formaPagoInputs.forEach(input => {
+        input.addEventListener("change", () => {
+            formaPago = input.id;
+            if (formaPago === "debito" || formaPago === "credito") {
+                cantidadPagadaInput.value = totalCarrito.toFixed(2);
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
             } else {
                 cantidadPagadaInput.value = "";
             }
             calcularVuelto();
+<<<<<<< HEAD
             handlePaymentMethodChange();
         });
     });
@@ -251,6 +288,12 @@ document.addEventListener("DOMContentLoaded", () => {
     handlePaymentMethodChange();
 
     // Procesa la compra incluyendo la validación del número de transacción
+=======
+        });
+    });
+
+    // 📌 CAMBIO CLAVE: Se elimina la ventana de confirmación para que la compra se procese inmediatamente
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     confirmarCompraButton.addEventListener("click", async () => {
         if (carrito.size === 0) {
             showToast("El carrito está vacío", "warning");
@@ -262,12 +305,15 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+<<<<<<< HEAD
         // Validación para método débito o crédito
         if ((formaPago === "debito" || formaPago === "credito") && !numeroTransaccionInput.value.trim()) {
             showToast("Debe ingresar el número de transacción.", "error");
             return;
         }
 
+=======
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
         try {
             const res = await fetch("/cashier/", {
                 method: "POST",
@@ -279,8 +325,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     carrito: Array.from(carrito.values()),
                     tipo_venta: tipoVenta,
                     forma_pago: formaPago,
+<<<<<<< HEAD
                     cliente_paga: parseFloat(cantidadPagadaInput.value) || 0,
                     numero_transaccion: (formaPago === "debito" || formaPago === "credito") ? numeroTransaccionInput.value.trim() : ""
+=======
+                    cliente_paga: parseFloat(cantidadPagadaInput.value) || 0
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                 })
             });
 
@@ -304,6 +354,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (cerrarCajaBtn) {
+<<<<<<< HEAD
+=======
+        // 📌 CAMBIO CLAVE: Se elimina la ventana de confirmación para que el cierre de caja sea inmediato
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
         cerrarCajaBtn.addEventListener("click", async () => {
             try {
                 const res = await fetch("/cashier/cerrar_caja/", {
@@ -326,7 +380,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+<<<<<<< HEAD
     // Lógica para escanear código de barras
+=======
+    // 📌 NUEVA LÓGICA PARA ESCANEAR CÓDIGO DE BARRAS
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     async function handleBarcodeScan() {
         const barcode = barcodeInput.value.trim();
         if (!barcode) return;
@@ -358,7 +416,14 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (carrito.size === 0) {
         cantidadPagadaInput.value = "";
+<<<<<<< HEAD
         totalPriceElement.textContent = `$0`;
         vueltoElement.textContent = `$0`;
     }
 });
+=======
+        totalPriceElement.textContent = `$0.00`;
+        vueltoElement.textContent = `$0.00`;
+    }
+});
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b

@@ -114,6 +114,10 @@ def delete_product(request, product_id):
         return redirect('product_management')
     return render(request, 'products/delete_product.html', {'product': product})
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 def download_template(request):
     """
     Vista para descargar una plantilla Excel con los encabezados de los productos.
@@ -219,7 +223,11 @@ def upload_products(request):
                         'fecha_ingreso_producto': fecha_ingreso_producto,
                         'precio_compra': precio_compra,
                         'precio_venta': precio_venta,
+<<<<<<< HEAD
                         'permitir_venta_sin_stock': True,
+=======
+                        'permitir_venta_sin_stock': True, # ✅ Línea agregada
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                     }
 
                     product_obj, created = Product.objects.update_or_create(
@@ -262,7 +270,10 @@ def delete_all_products(request):
 def export_products_to_excel(request):
     """
     Vista para exportar todos los productos a un archivo Excel.
+<<<<<<< HEAD
     Se utiliza el formateo definido en el modelo para los precios.
+=======
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     """
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="export_productos.xlsx"'
@@ -287,8 +298,13 @@ def export_products_to_excel(request):
             product.codigo_alternativo,
             product.proveedor,
             product.fecha_ingreso_producto,
+<<<<<<< HEAD
             product.formatted_precio_compra,
             product.formatted_precio_venta,
+=======
+            float(product.precio_compra) if product.precio_compra else 0,
+            float(product.precio_venta) if product.precio_venta else 0,
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
         ]
         sheet.append(row_data)
 

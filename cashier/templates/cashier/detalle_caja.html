@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
+<<<<<<< HEAD
 {% load humanize %}  <-- AÑADIR ESTA LÍNEA
 
+=======
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 {% block extra_styles %}
 
 <link rel="stylesheet" href="{% static 'css/print.css' %}" media="print">
@@ -29,6 +32,7 @@
 </div>
 
 <div class="col-md-6 mb-4">
+<<<<<<< HEAD
     <div class="card p-4 h-100">
         <h4>Resumen Financiero</h4>
         <p><strong>Efectivo Inicial:</strong> ${{ caja.efectivo_inicial|default:"0"|intcomma }}</p>  <-- APLICADO
@@ -39,6 +43,18 @@
         <p><strong>Efectivo Final en Caja:</strong> ${{ caja.efectivo_final|default:"0"|intcomma }}</p> <-- APLICADO
         <p><strong>Total de Ventas:</strong> ${{ caja.ventas_totales|default:"0"|intcomma }}</p> <-- APLICADO
     </div>
+=======
+    <div class="card p-4 h-100">
+        <h4>Resumen Financiero</h4>
+        <p><strong>Efectivo Inicial:</strong> ${{ caja.efectivo_inicial|default:"0.00" }}</p>
+        <p><strong>Total en Débito:</strong> ${{ caja.total_ventas_debito|default:"0.00" }}</p>
+        <p><strong>Total en Crédito:</strong> ${{ caja.total_ventas_credito|default:"0.00" }}</p>
+        <p><strong>Total en Efectivo:</strong> ${{ caja.total_ventas_efectivo|default:"0.00" }}</p>
+        <p><strong>Vuelto Entregado:</strong> ${{ caja.vuelto_entregado|default:"0.00" }}</p>
+        <p><strong>Efectivo Final en Caja:</strong> ${{ caja.efectivo_final|default:"0.00" }}</p>
+        <p><strong>Total de Ventas:</strong> ${{ caja.ventas_totales|default:"0.00" }}</p>
+    </div>
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 </div>
 
 </div>

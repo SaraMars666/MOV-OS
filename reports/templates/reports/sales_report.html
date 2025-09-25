@@ -14,6 +14,7 @@
 <p><strong>Empleado:</strong> {{ venta.empleado.username }}</p>
 <p><strong>Tipo de Venta:</strong> {{ venta.get_tipo_venta_display }}</p>
 <p><strong>Forma de Pago:</strong> {{ venta.get_forma_pago_display }}</p>
+<<<<<<< HEAD
 {% if venta.forma_pago == "debito" or venta.forma_pago == "credito" %}
     <p><strong>Número de Transacción:</strong> {{ venta.numero_transaccion }}</p>
 {% endif %}
@@ -22,6 +23,13 @@
 {% if venta.forma_pago == "efectivo" %}
     <p><strong>Cliente Pagó:</strong> ${{ venta.formatted_cliente_paga }}</p>
     <p><strong>Vuelto Entregado:</strong> ${{ venta.formatted_vuelto_entregado }}</p>
+=======
+<p><strong>Total:</strong> ${{ venta.total|floatformat:2 }}</p>
+
+{% if venta.forma_pago == "efectivo" %}
+    <p><strong>Cliente Pagó:</strong> ${{ venta.cliente_paga|default:"0.00"|floatformat:2 }}</p>
+    <p><strong>Vuelto Entregado:</strong> ${{ venta.vuelto_entregado|default:"0.00"|floatformat:2 }}</p>
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 {% endif %}
 
 <h4 class="mt-4">Productos Vendidos:</h4>
@@ -39,9 +47,14 @@
         <tr>
             <td>{{ item.producto.nombre }}</td>
             <td>{{ item.cantidad }}</td>
+<<<<<<< HEAD
             <!-- Aquí mostramos el precio unitario sin decimales y, de ser necesario, con separador de miles -->
             <td>${{ item.precio_unitario|floatformat:"0" }}</td>
             <td>${{ item.formatted_subtotal }}</td>
+=======
+            <td>${{ item.precio_unitario|floatformat:2 }}</td>
+            <td>${{ item.subtotal|floatformat:2 }}</td>
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
         </tr>
         {% endfor %}
     </tbody>

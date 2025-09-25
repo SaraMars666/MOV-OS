@@ -24,6 +24,7 @@ class Product(models.Model):
     def __str__(self):
         return self.nombre if self.nombre else self.producto_id or f"Producto sin nombre ({self.pk})"
 
+<<<<<<< HEAD
     def _format_currency(self, value):
         try:
             # Formatea sin decimales y usa el punto para separar miles
@@ -39,6 +40,8 @@ class Product(models.Model):
     def formatted_precio_venta(self):
         return self._format_currency(self.precio_venta)
 
+=======
+>>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     class Meta:
         verbose_name = "Producto"
         verbose_name_plural = "Productos"

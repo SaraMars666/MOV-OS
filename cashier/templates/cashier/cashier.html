@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block extra_styles %}
+    <link rel="stylesheet" href="{% static 'css/cashier.css' %}">   
+    <script src="{% static 'js/cashier.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="container cashier-container">
+    <div class="text-center mb-4">
+        <h2>Bienvenido, {{ user.username }}</h2>
+        <h3>Modo Cajero</h3>
+    </div>
+
+    <div id="alertPlaceholder" class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1050; width: 350px;">
+        <!-- Aquí se mostrarán las alertas dinámicas -->
+    </div>
+    
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; width: 350px;">
+        {% for message in mensajes %}
+            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% else %}success{% endif %} border-0 show" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body fs-5">{{ message }}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="row justify-content-center">
+        <!-- Buscar productos -->
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card p-3 h-100">
+                <h4 class="card-title">Buscar productos</h4>
+                <form id="product-search-form" class="mb-3">
+                    <input type="text" id="product-search-input" class="form-control" placeholder="Buscar por nombre o código de barras">
+                    <button type="button" id="product-search-button" class="btn btn-primary w-100 mt-2">Buscar</button>
+                </form>
+                <div class="flex-grow-1 overflow-auto" style="max-height: 400px;">
+                    <ul id="product-search-results" class="list-group">
+                        <!-- Los resultados de la búsqueda se renderizarán aquí -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carrito de Compras -->
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card p-3 h-100 d-flex flex-column">
+                <h4 class="card-title">Carrito de Compras</h4>
+                <input type="text" id="barcode-input" class="form-control mb-2" placeholder="Código de barras">
+                <div class="table-responsive flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Cant.</th>
+                                <th>Producto</th>
+                                <th>Total</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-items">
+                            <tr>
+                                <td colspan="4" class="text-center">No hay productos en el carrito.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-auto pt-3 border-top">
+                    <p class="lead text-end mb-0">Total: $<span id="total-price">0.00</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opciones de Pago y Tipo de Venta -->
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card p-3 h-100">
+                <h4 class="card-title">Opciones de Pago</h4>
+                
+                <!-- Tipo de Venta -->
+                <div class="mb-3">
+                    <label class="form-label">Tipo de Venta</label>
+                    <div>
+                        <input type="radio" id="boleta" name="sale-type" value="boleta" checked>
+                        <label for="boleta">Boleta Electrónica</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="factura" name="sale-type" value="factura">
+                        <label for="factura">Factura Electrónica</label>
+                    </div>
+                </div>
+
+                <!-- Forma de Pago -->
+                <div class="mb-3">
+                    <label class="form-label">Forma de Pago</label>
+                    <div>
+                        <input type="radio" id="efectivo" name="payment-method" value="efectivo" checked>
+                        <label for="efectivo">Efectivo</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="debito" name="payment-method" value="debito">
+                        <label for="debito">Tarjeta de Débito</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="credito" name="payment-method" value="credito">
+                        <label for="credito">Tarjeta de Crédito</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="transferencia" name="payment-method" value="transferencia">
+                        <label for="transferencia">Transferencia</label>
+                    </div>
+                </div>
+
+                <!-- Número de Transacción (visible para débito/credito) -->
+                <div id="transaction-info" class="mb-3" style="display: none;">
+                    <label for="numero_transaccion" class="form-label">Número de Transacción</label>
+                    <input type="text" id="numero_transaccion" class="form-control">
+                </div>
+
+                <!-- Cantidad Pagada -->
+                <div class="mb-3">
+                    <label class="form-label">Cantidad Pagada</label>
+                    <input type="text" id="cantidad_pagada" class="form-control">
+                </div>
+
+                <!-- Vuelto -->
+                <div class="mb-3">
+                    <label class="form-label">Vuelto</label>
+                    <p id="vuelto">$0.00</p>
+                </div>
+                
+                <button type="button" id="confirmar-compra" class="btn btn-success w-100 mt-auto">Confirmar Compra</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center mt-4">
+        <div class="col-12 col-md-6 col-lg-4 mb-3">
+            <button type="button" id="close-cash-button" class="btn btn-danger w-100">Cerrar Caja</button>
+        </div>
+        <div class="col-12 col-md-6 col-lg-4 mb-3">
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary w-100">Volver</a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para confirmar la compra y preguntar sobre la impresión -->
+<div class="modal fade" id="confirmPurchaseModal" tabindex="-1" aria-labelledby="confirmPurchaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmPurchaseModalLabel">Confirmar Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                ¿Está seguro de la venta?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                <button type="button" class="btn btn-primary" id="confirmAndPrintBtn">Sí</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

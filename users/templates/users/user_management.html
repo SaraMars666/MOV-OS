@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Gestión de Usuarios</h2>
+    <br><br>
+    <!-- Botón para crear un nuevo usuario -->
+    <div class="text-right mb-3">
+        <a href="{% url 'create_user' %}" class="btn btn-primary">Crear Usuario</a>
+    </div>
+    <br>
+    <br><br>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre de Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                    {% if user.is_superuser %}
+                        Administrador
+                    {% else %}
+                        Usuario
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'edit_user' user.id %}" class="btn btn-sm btn-warning">Editar</a>
+                    <a href="{% url 'delete_user' user.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">No hay usuarios registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br><br>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Volver</a>
+    <br><br>
+</div>
+{% endblock %}

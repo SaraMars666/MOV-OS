@@ -1,0 +1,22 @@
+<!--abrir caja-->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Apertura Caja</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="efectivo_inicial">Efectivo Inicial:</label>
+            <input type="number" class="form-control" id="efectivo_inicial" name="efectivo_inicial" placeholder="Ingrese el monto inicial en caja" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Abrir Caja</button>
+    </form>
+</div>
+<div class="d-flex justify-content-between mt-3">
+    {% if not user.is_superuser %}
+        <a href="{% url 'logout' %}" class="btn btn-danger">Cerrar Sesión</a>
+    {% endif %}
+</div>
+
+{% endblock %}

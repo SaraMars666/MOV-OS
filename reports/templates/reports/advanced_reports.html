@@ -1,0 +1,244 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes Avanzados - MOV-OS</title>
+  <!-- Fuente inspirada en Warcraft 3 -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #000;
+      color: #FFF;
+      font-family: 'Cinzel', serif;
+    }
+    .container, .card {
+      background-color: #12161A !important;
+      border: 1px solid #444E5A;
+    }
+    .card-header h4, h5, .display-6 {
+      color: #FFF !important;
+      text-shadow: 0 0 5px #0099FF;
+    }
+    .card-header p, .small, label, .form-label {
+      color: #CCC;
+    }
+    /* Se eliminan escalados forzados, dejando la resolución fija */
+    canvas {
+      display: block;
+      margin: auto;
+    }
+    .list-group-item {
+      background-color: #1F222B !important;
+      color: #FFF !important;
+      border: 1px solid #444E5A;
+    }
+    .btn, a { color: #FFF; }
+    @media (max-width: 576px) {
+      .display-6 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid py-3">
+    <!-- Filtros Globales -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h4>Filtros del Reporte</h4>
+        <p class="small">Selecciona el rango de fechas para filtrar los resultados.</p>
+      </div>
+      <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+          <div class="col-md-5">
+            <label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
+            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+          </div>
+          <div class="col-md-5">
+            <label for="fecha_fin" class="form-label">Fecha de Fin</label>
+            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Aplicar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- KPIs Generales -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h4>KPIs Generales</h4>
+        <p class="small">Resumen de los indicadores principales.</p>
+      </div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-6 col-md-3 mb-3">
+            <h5>Ingreso Total</h5>
+            <p class="display-6">{{ ingreso_total }}</p>
+            <p class="small">Total en ventas.</p>
+          </div>
+          <div class="col-6 col-md-3 mb-3">
+            <h5>CMV</h5>
+            <p class="display-6">{{ cmv }}</p>
+            <p class="small">
+              Costo Vendido: es el costo total de la mercadería vendida, lo que pagaste por los productos.
+            </p>
+          </div>
+          <div class="col-6 col-md-3 mb-3">
+            <h5>Ganancia Bruta</h5>
+            <p class="display-6">{{ ganancia_bruta }}</p>
+            <p class="small">Diferencia entre Ingreso Total y CMV.</p>
+          </div>
+          <div class="col-6 col-md-3 mb-3">
+            <h5>Margen (%)</h5>
+            <p class="display-6">{{ margen }}</p>
+            <p class="small">Porcentaje sobre Ingreso Total.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detalle de Ventas -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h4>Detalle de Ventas</h4>
+        <p class="small">Información de transacciones y promedios.</p>
+      </div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-6 col-md-4 mb-3">
+            <h5>Ticket Promedio</h5>
+            <p class="display-6">{{ ticket_promedio }}</p>
+            <p class="small">Promedio por venta.</p>
+          </div>
+          <div class="col-6 col-md-4 mb-3">
+            <h5>Unidades Promedio</h5>
+            <p class="display-6">{{ unidades_promedio }}</p>
+            <p class="small">Unidades vendidas por transacción.</p>
+          </div>
+          <div class="col-12 col-md-4 mb-3">
+            <h5>Total Transacciones</h5>
+            <p class="display-6">{{ num_transacciones }}</p>
+            <p class="small">Ventas realizadas en el período.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenedor para el gráfico de Ventas por Forma de Pago -->
+    <div class="mb-3">
+      <h4 class="text-center" style="text-shadow: 0 0 5px #0099FF;">Ventas por Forma de Pago</h4>
+      <p class="text-center small">Visualización de la distribución de ventas según el método de pago.</p>
+      <div class="d-flex justify-content-center">
+        <canvas id="chartSalesByPayment" width="1600" height="800"></canvas>
+      </div>
+    </div>
+
+    <!-- Contenedor para el gráfico de Top Productos Más Vendidos -->
+    <div class="mb-3" id="top-products">
+      <h4 class="text-center" style="text-shadow: 0 0 5px #0099FF;">Top Productos Más Vendidos</h4>
+      <p class="text-center small">Visualización de los productos con mayor cantidad vendida. Ajusta el “Top N” a continuación.</p>
+      <div class="mb-3">
+        <form method="get" id="topFilterForm" class="row g-2 align-items-end justify-content-center">
+          <div class="col-6 col-md-3">
+            <input type="hidden" name="fecha_inicio" value="{{ fecha_inicio }}">
+            <input type="hidden" name="fecha_fin" value="{{ fecha_fin }}">
+            <label for="top" class="form-label small mb-0">Mostrar Top</label>
+            <select name="top" id="top" class="form-select">
+              <option value="5" {% if filtro_top_actual == 5 %}selected{% endif %}>5</option>
+              <option value="10" {% if filtro_top_actual == 10 %}selected{% endif %}>10</option>
+              <option value="20" {% if filtro_top_actual == 20 %}selected{% endif %}>20</option>
+              <option value="30" {% if filtro_top_actual == 30 %}selected{% endif %}>30</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-3">
+            <button type="submit" class="btn btn-primary w-100">Actualizar</button>
+          </div>
+        </form>
+      </div>
+      <div class="d-flex justify-content-center">
+        <canvas id="chartTopProducts" width="1600" height="800"></canvas>
+      </div>
+    </div>
+
+    <div class="text-center my-4">
+      <a href="{% url 'report_dashboard' %}" class="btn btn-secondary">Volver al Dashboard de Reportes</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    // Gráfico de Barras para Ventas por Forma de Pago (Barras horizontales)
+    const ctxPayment = document.getElementById('chartSalesByPayment').getContext('2d');
+    const paymentLabels = [{% for item in sales_by_payment_chart %}"{{ item.forma_pago }}",{% endfor %}];
+    const paymentData = [{% for item in sales_by_payment_chart %}{{ item.total_monto }},{% endfor %}];
+    new Chart(ctxPayment, {
+      type: 'bar',
+      data: {
+        labels: paymentLabels,
+        datasets: [{
+          label: 'Ventas por Forma de Pago',
+          data: paymentData,
+          backgroundColor: [
+            'rgba(0, 208, 255, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
+            'rgba(255, 99, 132, 0.7)'
+          ],
+          borderColor: [
+            'rgba(0, 208, 255, 1)',
+            'rgba(75, 192, 192, 1)',
+            'rgba(255, 206, 86, 1)',
+            'rgba(255, 99, 132, 1)'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          x: { beginAtZero: true, ticks: { color: '#FFF' } },
+          y: { ticks: { color: '#FFF' } }
+        }
+      }
+    });
+
+    // Gráfico de Barras para Top Productos Más Vendidos (Barras verticales)
+    const ctxTop = document.getElementById('chartTopProducts').getContext('2d');
+    const topLabels = [{% for product in top_selling_products %}"{{ product.producto__nombre }}",{% endfor %}];
+    const topData = [{% for product in top_selling_products %}{{ product.total_cantidad }},{% endfor %}];
+    new Chart(ctxTop, {
+      type: 'bar',
+      data: {
+        labels: topLabels,
+        datasets: [{
+          label: 'Cantidad Vendida',
+          data: topData,
+          backgroundColor: 'rgba(75, 192, 192, 0.7)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { color: '#FFF' } },
+          y: { beginAtZero: true, ticks: { color: '#FFF' } }
+        }
+      }
+    });
+
+    window.addEventListener("load", function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if(urlParams.has('top')) {
+        const topSection = document.getElementById('top-products');
+        if(topSection) { topSection.scrollIntoView({ behavior: 'smooth' }); }
+      }
+    });
+  </script>
+</body>
+</html>

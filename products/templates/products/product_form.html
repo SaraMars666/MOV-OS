@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; width: 350px;"></div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% for field in form %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.errors %}
+            <div class="text-danger small">{{ field.errors.0 }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" name="save_only" class="btn btn-success">Guardar</button>
+        <button type="submit" name="save_and_list" class="btn btn-primary">Guardar y Volver a la Lista</button>
+        <a href="{% url 'product_management' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if messages %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const toastContainer = document.getElementById("toast-container");
+
+        {% for message in messages %}
+        toastContainer.innerHTML += `
+            <div class="toast align-items-center text-white bg-success border-0 show mb-2" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">{{ message|escapejs }}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>`;
+        {% endfor %}
+
+        document.querySelectorAll('.toast').forEach(t => new bootstrap.Toast(t, { delay: 3000 }).show());
+    });
+</script>
+{% endif %}
+{% endblock %}

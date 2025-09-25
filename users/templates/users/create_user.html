@@ -1,0 +1,19 @@
+<!-- users/templates/users/create_user.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Crear Nuevo Usuario</h2>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Crear Usuario</button>
+    </form>
+</div>
+<br><br><br>
+<div><a href="{% url 'user_management' %}" class="btn btn-secondary">Volver</a>
+{% endblock %}
+
+
+</div><br>

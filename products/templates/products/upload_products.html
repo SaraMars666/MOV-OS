@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Cargar Productos por Excel</h2>
+    <p>Sube un archivo Excel para agregar o actualizar productos. Si un producto ya existe, será actualizado.</p>
+    <br>
+    <p>
+        Descarga la plantilla en el siguiente enlace:
+        <a href="{% url 'download_template' %}" class="btn btn-info">Descargar Plantilla</a>
+    </p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="file">Archivo Excel:</label>
+            <input type="file" name="file" id="file" class="form-control" accept=".xlsx" required>
+        </div>
+        <button type="submit" class="btn btn-success mt-3">Subir Archivo</button>
+    </form>
+    <br>
+    <a href="{% url 'product_management' %}" class="btn btn-secondary">Volver</a>
+</div>
+{% endblock %}

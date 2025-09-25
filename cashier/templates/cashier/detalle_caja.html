@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}  <-- AÑADIR ESTA LÍNEA
+
+{% block extra_styles %}
+
+<link rel="stylesheet" href="{% static 'css/print.css' %}" media="print">
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+<h2>Detalle de Cierre de Caja</h2>
+<div class="row">
+<div class="col-md-6 mb-4">
+<div class="card p-4 h-100">
+<h4>Información de la Caja</h4>
+<p><strong>ID de Caja:</strong> {{ caja.id }}</p>
+<p><strong>Cajero:</strong> {{ caja.usuario.username }}</p>
+<p><strong>Fecha de Apertura:</strong> {{ caja.fecha_apertura|date:"d/m/Y H:i" }}</p>
+<p><strong>Fecha de Cierre:</strong>
+{% if caja.fecha_cierre %}
+{{ caja.fecha_cierre|date:"d/m/Y H:i" }}
+{% else %}
+<em>Aún no se ha cerrado</em>
+{% endif %}
+</p>
+</div>
+</div>
+
+<div class="col-md-6 mb-4">
+    <div class="card p-4 h-100">
+        <h4>Resumen Financiero</h4>
+        <p><strong>Efectivo Inicial:</strong> ${{ caja.efectivo_inicial|default:"0"|intcomma }}</p>  <-- APLICADO
+        <p><strong>Total en Débito:</strong> ${{ caja.total_ventas_debito|default:"0"|intcomma }}</p> <-- APLICADO
+        <p><strong>Total en Crédito:</strong> ${{ caja.total_ventas_credito|default:"0"|intcomma }}</p> <-- APLICADO
+        <p><strong>Total en Efectivo:</strong> ${{ caja.total_ventas_efectivo|default:"0"|intcomma }}</p> <-- APLICADO
+        <p><strong>Vuelto Entregado:</strong> ${{ caja.vuelto_entregado|default:"0"|intcomma }}</p> <-- APLICADO
+        <p><strong>Efectivo Final en Caja:</strong> ${{ caja.efectivo_final|default:"0"|intcomma }}</p> <-- APLICADO
+        <p><strong>Total de Ventas:</strong> ${{ caja.ventas_totales|default:"0"|intcomma }}</p> <-- APLICADO
+    </div>
+</div>
+
+</div>
+
+<div class="no-print d-flex gap-2">
+<button onclick="window.print()" class="btn btn-primary mt-3">Imprimir Detalle</button>
+<button onclick="history.back()" class="btn btn-secondary mt-3">Volver</button>
+</div>
+
+</div>
+{% endblock %}

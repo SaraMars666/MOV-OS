@@ -1,0 +1,8 @@
+<!-- users/profile.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Perfil de {{ user.username }}</h2>
+<p>Email: {{ user.email }}</p>
+<!-- Otros detalles de perfil -->
+{% endblock %}

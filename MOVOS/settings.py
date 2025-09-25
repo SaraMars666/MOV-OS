@@ -28,17 +28,13 @@ INSTALLED_APPS = [
     # Project apps
     'cashier',
     'products',
-<<<<<<< HEAD
     'users.apps.UsersConfig',  
-=======
-    'users.apps.UsersConfig',  # Custom user config
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     'reports',
     'auth_app',
 ]
 AUTH_USER_MODEL = 'auth_app.User'
 
-MIDDLEWARE = [
+MIDDLEWARE = [*
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

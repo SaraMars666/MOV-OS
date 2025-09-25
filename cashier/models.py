@@ -16,7 +16,6 @@ class Venta(models.Model):
     )
     forma_pago = models.CharField(
         max_length=20,
-<<<<<<< HEAD
         choices=[
             ('efectivo', 'Efectivo'),
             ('debito', 'Tarjeta de Débito'),
@@ -56,39 +55,18 @@ class Venta(models.Model):
     @property
     def formatted_vuelto_entregado(self):
         return self._format_currency(self.vuelto_entregado)
-=======
-        choices=[('efectivo', 'Efectivo'), ('debito', 'Tarjeta de Débito'), ('credito', 'Tarjeta de Crédito')],
-        default='efectivo'
-    )
-
-    cliente_paga = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # 💵 Nuevo campo
-    vuelto_entregado = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-
-    def __str__(self):
-        return f"Venta #{self.id} - Total: ${self.total}"
-
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 
 
 class VentaDetalle(models.Model):
     venta = models.ForeignKey(Venta, related_name='detalles', on_delete=models.CASCADE)
-<<<<<<< HEAD
     producto = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='ventadetalles')
     cantidad = models.PositiveIntegerField()
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
-=======
-    producto = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='ventadetalles_cashier')
-    cantidad = models.PositiveIntegerField()
-    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
-
-
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     @property
     def subtotal(self):
         return self.cantidad * self.precio_unitario
 
-<<<<<<< HEAD
     @property
     def formatted_precio_unitario(self):
         try:
@@ -102,8 +80,6 @@ class VentaDetalle(models.Model):
             return "{:,.0f}".format(float(self.subtotal)).replace(",", ".")
         except Exception:
             return self.subtotal
-=======
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 
 
 User = get_user_model()
@@ -140,10 +116,7 @@ class AperturaCierreCaja(models.Model):
         default=0.0,
         verbose_name="Efectivo Final"
     )
-<<<<<<< HEAD
     
-=======
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     class Meta:
         verbose_name = "Apertura y Cierre de Caja"
         verbose_name_plural = "Aperturas y Cierres de Caja"

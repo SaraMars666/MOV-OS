@@ -13,7 +13,6 @@ from .models import Venta, VentaDetalle, AperturaCierreCaja
 from products.models import Product
 from .forms import AperturaCajaForm
 
-<<<<<<< HEAD
 # Función auxiliar para formatear números en Python
 def format_currency(value):
     try:
@@ -21,8 +20,6 @@ def format_currency(value):
     except Exception:
         return value
 
-=======
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 # 📌 ABRIR CAJA
 @login_required
 def abrir_caja(request):
@@ -42,12 +39,8 @@ def abrir_caja(request):
                 efectivo_inicial=efectivo_inicial,
                 estado='abierta'
             )
-<<<<<<< HEAD
             # Se formatea el efectivo inicial usando la función de formateo
             messages.success(request, f"Caja abierta con éxito. Monto inicial: ${format_currency(efectivo_inicial)}")
-=======
-            messages.success(request, f"Caja abierta con éxito. Monto inicial: ${efectivo_inicial:,.2f}")
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
             return redirect('cashier_dashboard')
         except (ValueError, TypeError):
             messages.error(request, "El monto inicial debe ser un número válido.")
@@ -84,7 +77,6 @@ def cashier_dashboard(request):
             tipo_venta = data.get('tipo_venta', 'boleta')
             forma_pago = data.get('forma_pago', 'efectivo')
             cliente_paga = Decimal(str(data.get('cliente_paga', '0')))
-<<<<<<< HEAD
             numero_transaccion = data.get('numero_transaccion', '').strip()
 
             # Validación: Si es pago con tarjeta (débito o crédito), el número de transacción es obligatorio
@@ -92,8 +84,6 @@ def cashier_dashboard(request):
                 return JsonResponse({
                     "error": "El número de transacción es obligatorio para pagos con tarjeta."
                 }, status=400)
-=======
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 
             if not carrito:
                 return JsonResponse({"error": "El carrito está vacío."}, status=400)
@@ -107,11 +97,7 @@ def cashier_dashboard(request):
             # Verificación de pago insuficiente solo para efectivo
             if forma_pago == 'efectivo' and cliente_paga < total:
                 return JsonResponse({
-<<<<<<< HEAD
                     "error": f"Pago insuficiente. El total es ${format_currency(total)}, pero el cliente pagó ${format_currency(cliente_paga)}."
-=======
-                    "error": f"Pago insuficiente. El total es ${total:,.2f}, pero el cliente pagó ${cliente_paga:,.2f}."
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                 }, status=400)
 
             with transaction.atomic():
@@ -120,12 +106,8 @@ def cashier_dashboard(request):
                     tipo_venta=tipo_venta,
                     forma_pago=forma_pago,
                     total=Decimal('0.00'),
-<<<<<<< HEAD
                     vuelto_entregado=Decimal('0.00'),
                     numero_transaccion=numero_transaccion if forma_pago in ["debito", "credito"] else ""
-=======
-                    vuelto_entregado=Decimal('0.00')
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                 )
 
                 for item in carrito:
@@ -148,10 +130,6 @@ def cashier_dashboard(request):
                 venta.total = total
                 if forma_pago == "efectivo":
                     venta.vuelto_entregado = max(Decimal('0.00'), cliente_paga - total)
-<<<<<<< HEAD
-=======
-
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                 venta.save()
 
             reporte_url = reverse('reporte_venta', args=[venta.id])
@@ -292,10 +270,6 @@ def ajustar_cantidad(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 # 📌 AGREGAR PRODUCTO AL CARRITO
 @login_required
 def agregar_al_carrito(request):
@@ -339,10 +313,6 @@ def agregar_al_carrito(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 # 📌 LISTAR PRODUCTOS DEL CARRITO
 @login_required
 def listar_carrito(request):
@@ -350,10 +320,6 @@ def listar_carrito(request):
     carrito = request.session.get('carrito', [])
     return JsonResponse({'carrito': carrito})
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 # 📌 LIMPIAR EL CARRITO
 @login_required
 def limpiar_carrito(request):
@@ -362,10 +328,6 @@ def limpiar_carrito(request):
     request.session.modified = True
     return JsonResponse({'mensaje': 'Carrito limpio con éxito'})
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 def delete_all_sales_and_cash_history(request):
     """
     Elimina todo el historial de ventas y registros de caja.
@@ -379,8 +341,4 @@ def delete_all_sales_and_cash_history(request):
             messages.success(request, '¡Éxito! Todo el historial de ventas y caja ha sido eliminado.')
         except Exception as e:
             messages.error(request, f'Ocurrió un error al eliminar los datos: {e}')
-<<<<<<< HEAD
     return redirect('products_management')
-=======
-    return redirect('products_management')
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b

@@ -22,8 +22,8 @@ class ProductForm(forms.ModelForm):
             'fecha_ingreso_producto': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'precio_compra': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'precio_venta': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'cantidad': forms.NumberInput(attrs={'class': 'form-control'}),
-            'stock': forms.NumberInput(attrs={'class': 'form-control'}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '1'}),
+            'stock': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '1'}),
             'codigo_barras': forms.TextInput(attrs={'class': 'form-control'}),
             'permitir_venta_sin_stock': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

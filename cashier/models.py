@@ -33,6 +33,13 @@ class Venta(models.Model):
         blank=True, 
         verbose_name="Número de Transacción"
     )
+    # Nuevo campo para almacenar el banco en caso de transferencia
+    banco = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Banco"
+    )
     
     def __str__(self):
         return f"Venta #{self.id} - Total: ${self.formatted_total}"

@@ -95,3 +95,12 @@
     75% { transform: translateX(-2px); }
     100% { transform: translateX(0); }
 }
+
+.payment-method-btn {
+    height: 60px;             /* Altura fija, ajústala según convenga */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: normal;      /* Permite que el texto se ajuste en varias líneas si es necesario */
+    text-align: center;
+}

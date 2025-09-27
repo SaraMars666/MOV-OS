@@ -25,16 +25,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Project apps
     'cashier',
     'products',
     'users.apps.UsersConfig',  
     'reports',
     'auth_app',
+    'django.contrib.humanize',
 ]
 AUTH_USER_MODEL = 'auth_app.User'
 
-MIDDLEWARE = [*
+MIDDLEWARE = [  # CORRECCIÓN: Se eliminó el '*'
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

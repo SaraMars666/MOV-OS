@@ -40,10 +40,10 @@
         </div>
     </div>
 
-    
-
     <div class="text-center mt-4">
-        <a href="{% url 'logout' %}" class="btn btn-danger">Cerrar Sesión</a>
+        <a href="{% url 'logout' %}" class="btn btn-danger" onclick="return confirm('¿Está seguro que desea cerrar sesión?');">
+            Cerrar Sesión
+        </a>
     </div>
 </div>
 {% endblock %}

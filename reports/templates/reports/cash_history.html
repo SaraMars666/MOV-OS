@@ -1,133 +1,120 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block extra_styles %}
-
 <link rel="stylesheet" href="{% static 'css/reports.css' %}">
 {% endblock %}
 {% block content %}
 <div class="container">
-<h2 class="mb-4">Historial de Caja</h2>
+    <h2 class="mb-4">Historial de Caja</h2>
 
-<!-- Sección de Filtros -->
+    <!-- Sección de Filtros -->
+    <form method="get" action="{% url 'historial_caja' %}" class="row align-items-end mb-3 filtros-container">
+        <div class="col-md-3">
+            <label for="id_caja_filtro" class="form-label">ID Caja</label>
+            <input type="number" class="form-control" id="id_caja_filtro" name="id_caja" value="{{ request.GET.id_caja }}" placeholder="Ej. 123">
+        </div>
+        <div class="col-md-3">
+            <label for="cajero_filtro" class="form-label">Cajero</label>
+            <input type="text" class="form-control" id="cajero_filtro" name="cajero" value="{{ request.GET.cajero }}" placeholder="Nombre de usuario">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
+            <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="{{ fecha_inicio_filtro }}">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_fin" class="form-label">Fecha de Fin</label>
+            <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ fecha_fin_filtro }}">
+        </div>
+        <div class="col-12 mt-3 d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+            <a href="{% url 'historial_caja' %}" class="btn btn-secondary">Limpiar Filtros</a>
+        </div>
+    </form>
 
-<form method="get" action="{% url 'historial_caja' %}" class="row align-items-end mb-3 filtros-container">
-<div class="col-md-3">
-<label for="id_caja_filtro" class="form-label">ID Caja</label>
-<input type="number" class="form-control" id="id_caja_filtro" name="id_caja" value="{{ request.GET.id_caja }}" placeholder="Ej. 123">
-</div>
-<div class="col-md-3">
-<label for="cajero_filtro" class="form-label">Cajero</label>
-<input type="text" class="form-control" id="cajero_filtro" name="cajero" value="{{ request.GET.cajero }}" placeholder="Nombre de usuario">
-</div>
-<div class="col-md-3">
-<label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
-<input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="{{ fecha_inicio_filtro }}">
-</div>
-<div class="col-md-3">
-<label for="fecha_fin" class="form-label">Fecha de Fin</label>
-<input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ fecha_fin_filtro }}">
-</div>
-<div class="col-12 mt-3 d-flex justify-content-end">
-<button type="submit" class="btn btn-primary me-2">Filtrar</button>
-<a href="{% url 'historial_caja' %}" class="btn btn-secondary">Limpiar Filtros</a>
-</div>
-</form>
+    <!-- Selector de filas por página -->
+    <div class="mb-3 d-flex justify-content-end align-items-center">
+        <label for="perPageSelect" class="form-label me-2">Mostrar:</label>
+        <select class="form-select w-auto" id="perPageSelect" onchange="location = this.value;">
+            {% for num in per_page_options %}
+            <option value="?per_page={{ num }}&{{ request.GET.urlencode }}" {% if num == per_page %}selected{% endif %}>
+                {{ num }} filas
+            </option>
+            {% endfor %}
+        </select>
+    </div>
 
-{# Selector de filas por página #}
+    {% if cajas %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover" id="historial-caja">
+            <thead class="thead-dark">
+                <tr>
+                    <th>ID Caja</th>
+                    <th>Cajero</th>
+                    <th>Fecha Apertura</th>
+                    <th>Fecha Cierre</th>
+                    <th>Total Ventas</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for caja in cajas %}
+                <tr>
+                    <td>{{ caja.id }}</td>
+                    <td>{{ caja.usuario.username }}</td>
+                    <td>{{ caja.fecha_apertura|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if caja.fecha_cierre %}
+                            {{ caja.fecha_cierre|date:"d/m/Y H:i" }}
+                        {% else %}
+                            <em>Sin cerrar</em>
+                        {% endif %}
+                    </td>
+                    <td>{{ caja.formatted_ventas_totales }}</td>
+                    <td>
+                        <span class="badge {% if caja.estado == 'abierta' %}badge-success{% else %}badge-danger{% endif %}">
+                            {{ caja.get_estado_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if caja.estado == 'cerrada' %}
+                            <a href="{% url 'caja_report' caja.id %}" class="btn btn-sm btn-info">Ver Detalle</a>
+                        {% else %}
+                            <small class="text-muted">Caja Abierta</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center">No hay registros de caja disponibles.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-<div class="mb-3 d-flex justify-content-end align-items-center">
-<label for="perPageSelect" class="form-label me-2">Mostrar:</label>
-<select class="form-select w-auto" id="perPageSelect" onchange="location = this.value;">
-{% for num in per_page_options %}
-<option value="?per_page={{ num }}&{{ request.GET.urlencode }}" {% if num == per_page %}selected{% endif %}>
-{{ num }} filas
-</option>
-{% endfor %}
-</select>
-</div>
-
-{% if cajas %}
-
-<div class="table-responsive">
-<table class="table table-striped table-hover" id="historial-caja">
-<thead class="thead-dark">
-<tr>
-<th>ID Caja</th>
-<th>Cajero</th>
-<th>Fecha Apertura</th>
-<th>Fecha Cierre</th>
-<th>Total Ventas</th>
-<th>Estado</th>
-<th>Acciones</th>
-</tr>
-</thead>
-<tbody>
-{% for caja in cajas %}
-<tr>
-<td>{{ caja.id }}</td>
-<td>{{ caja.usuario.username }}</td>
-<td>{{ caja.fecha_apertura|date:"d/m/Y H:i" }}</td>
-<td>
-{% if caja.fecha_cierre %}
-{{ caja.fecha_cierre|date:"d/m/Y H:i" }}
-{% else %}
-<em>Sin cerrar</em>
-{% endif %}
-</td>
-<td>${{ caja.ventas_totales|default:0|floatformat:2 }}</td>
-<td>
-<span class="badge
-{% if caja.estado == 'abierta' %}
-badge-success {# Fondo verde brillante para Abierta #}
-{% else %}
-badge-danger {# Fondo rojo para Cerrada, para mayor visibilidad #}
-{% endif %}">
-{{ caja.get_estado_display }}
-</span>
-</td>
-<td>
-{% if caja.estado == 'cerrada' %}
-<a href="{% url 'detalle_caja' caja.id %}" class="btn btn-sm btn-info">Ver Detalle</a>
-{% else %}
-<small class="text-muted">Caja Abierta</small>
-{% endif %}
-</td>
-</tr>
-{% empty %}
-<tr>
-<td colspan="7" class="text-center">No hay registros de caja disponibles.</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-
-<!-- Paginación -->
-
-<nav aria-label="Paginación">
-<ul class="pagination justify-content-center">
-{% if cajas.has_previous %}
-<li class="page-item">
-<a class="page-link" href="?page={{ cajas.previous_page_number }}&{{ request.GET.urlencode }}#historial-caja" aria-label="Anterior">&lsaquo;</a>
-</li>
-{% endif %}
-
-    <li class="page-item disabled"><span class="page-link">Página {{ cajas.number }} de {{ cajas.paginator.num_pages }}</span></li>
-
-    {% if cajas.has_next %}
-    <li class="page-item">
-        <a class="page-link" href="?page={{ cajas.next_page_number }}&{{ request.GET.urlencode }}#historial-caja" aria-label="Siguiente">&rsaquo;</a>
-    </li>
+    <!-- Paginación -->
+    <nav aria-label="Paginación">
+        <ul class="pagination justify-content-center">
+            {% if cajas.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ cajas.previous_page_number }}&{{ request.GET.urlencode }}#historial-caja" aria-label="Anterior">&lsaquo;</a>
+            </li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Página {{ cajas.number }} de {{ cajas.paginator.num_pages }}</span></li>
+            {% if cajas.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ cajas.next_page_number }}&{{ request.GET.urlencode }}#historial-caja" aria-label="Siguiente">&rsaquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% else %}
+    <p class="text-center">No hay registros de caja disponibles.</p>
     {% endif %}
-</ul>
 
-</nav>
-{% else %}
-<p class="text-center">No hay registros de caja disponibles.</p>
-{% endif %}
-
-<div class="text-center mt-3">
-<a href="{% url 'report_dashboard' %}" class="btn btn-secondary">Volver al Dashboard de Reportes</a>
-</div>
+    <div class="text-center mt-3">
+        <a href="{% url 'report_dashboard' %}" class="btn btn-secondary">Volver al Dashboard de Reportes</a>
+    </div>
 </div>
 {% endblock %}

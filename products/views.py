@@ -262,10 +262,7 @@ def delete_all_products(request):
 def export_products_to_excel(request):
     """
     Vista para exportar todos los productos a un archivo Excel.
-<<<<<<< HEAD
     Se utiliza el formateo definido en el modelo para los precios.
-=======
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
     """
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="export_productos.xlsx"'

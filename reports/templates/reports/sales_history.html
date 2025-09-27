@@ -13,14 +13,12 @@
     <form method="get" class="row align-items-end mb-3 filtros-container">
         <div class="col-md-3 col-6">
             <label for="fecha_inicio" class="form-label">Fecha Inicio:</label>
-            <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control"
-                value="{{ fecha_inicio|date:'Y-m-d' }}">
+            <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ fecha_inicio|date:'Y-m-d' }}">
         </div>
 
         <div class="col-md-3 col-6">
             <label for="fecha_fin" class="form-label">Fecha Fin:</label>
-            <input type="date" id="fecha_fin" name="fecha_fin" class="form-control"
-                value="{{ fecha_fin|date:'Y-m-d' }}">
+            <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ fecha_fin|date:'Y-m-d' }}">
         </div>
 
         <div class="col-md-3 col-6">
@@ -56,8 +54,8 @@
             <tr>
                 <td>{{ sale.id }}</td>
                 <td>{{ sale.empleado.username }}</td>
-                <td>{{ sale.fecha }}</td>
-                <td>${{ sale.total }}</td>
+                <td>{{ sale.fecha|date:"d/m/Y H:i" }}</td>
+                <td>{{ sale.display_total }}</td>
                 <td>
                     <a href="{% url 'sales_report' sale.id %}" class="btn btn-primary btn-sm">Ver Reporte</a>
                 </td>
@@ -109,5 +107,4 @@
         }
     });
 </script>
-
 {% endblock %}

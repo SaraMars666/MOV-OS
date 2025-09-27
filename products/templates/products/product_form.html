@@ -27,23 +27,20 @@
 {% endblock %}
 
 {% block extra_scripts %}
-{% if messages %}
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const toastContainer = document.getElementById("toast-container");
-
-        {% for message in messages %}
-        toastContainer.innerHTML += `
-            <div class="toast align-items-center text-white bg-success border-0 show mb-2" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">{{ message|escapejs }}</div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>`;
-        {% endfor %}
-
-        document.querySelectorAll('.toast').forEach(t => new bootstrap.Toast(t, { delay: 3000 }).show());
+document.addEventListener("DOMContentLoaded", () => {
+    const numericInputs = document.querySelectorAll('input[type="number"]');
+    numericInputs.forEach(input => {
+        // Evitar ingreso de caracteres no numéricos y valores negativos
+        input.addEventListener('input', () => {
+            // Elimina todo salvo dígitos
+            input.value = input.value.replace(/[^0-9]/g, '');
+            // Forzar 0 si se ingresa un valor negativo (aunque con type="number" y min=0 esto no debería pasar)
+            if (parseInt(input.value) < 0) {
+                input.value = 0;
+            }
+        });
     });
+});
 </script>
-{% endif %}
 {% endblock %}

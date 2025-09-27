@@ -1,26 +1,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
 {% block extra_styles %}
-    <link rel="stylesheet" href="{% static 'css/cashier.css' %}">   
-    <script src="{% static 'js/cashier.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/cashier.css' %}">
 {% endblock %}
 
 {% block content %}
-
 <div class="container cashier-container">
     <div class="text-center mb-4">
         <h2>Bienvenido, {{ user.username }}</h2>
         <h3>Modo Cajero</h3>
     </div>
 
-    <div id="alertPlaceholder" class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1050; width: 350px;">
-        <!-- Aquí se mostrarán las alertas dinámicas -->
-    </div>
+    <div id="alertPlaceholder" class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1050; width: 350px;"></div>
     
     <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; width: 350px;">
         {% for message in mensajes %}
@@ -43,9 +35,7 @@
                     <button type="button" id="product-search-button" class="btn btn-primary w-100 mt-2">Buscar</button>
                 </form>
                 <div class="flex-grow-1 overflow-auto" style="max-height: 400px;">
-                    <ul id="product-search-results" class="list-group">
-                        <!-- Los resultados de la búsqueda se renderizarán aquí -->
-                    </ul>
+                    <ul id="product-search-results" class="list-group"></ul>
                 </div>
             </div>
         </div>
@@ -78,7 +68,6 @@
             </div>
         </div>
 
-<<<<<<< HEAD
         <!-- Opciones de Pago y Tipo de Venta -->
         <div class="col-12 col-md-6 col-lg-4 mb-4">
             <div class="card p-3 h-100">
@@ -87,95 +76,53 @@
                 <!-- Tipo de Venta -->
                 <div class="mb-3">
                     <label class="form-label">Tipo de Venta</label>
-                    <div>
-                        <input type="radio" id="boleta" name="sale-type" value="boleta" checked>
-                        <label for="boleta">Boleta Electrónica</label>
+                    <div class="btn-group w-100" role="group" aria-label="Tipo de Venta">
+                        <button type="button" class="btn btn-primary active" data-sale-type="boleta">Boleta Electrónica</button>
+                        <button type="button" class="btn btn-outline-primary" data-sale-type="factura">Factura Electrónica</button>
                     </div>
-                    <div>
-                        <input type="radio" id="factura" name="sale-type" value="factura">
-                        <label for="factura">Factura Electrónica</label>
-                    </div>
+                    <input type="hidden" id="sale-type" name="sale-type" value="boleta">
                 </div>
 
                 <!-- Forma de Pago -->
                 <div class="mb-3">
                     <label class="form-label">Forma de Pago</label>
-                    <div>
-                        <input type="radio" id="efectivo" name="payment-method" value="efectivo" checked>
-                        <label for="efectivo">Efectivo</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="button" class="btn btn-primary w-100 payment-method-btn active" data-payment-method="efectivo">Efectivo</button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-primary w-100 payment-method-btn" data-payment-method="debito">Tarjeta de Débito</button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-primary w-100 payment-method-btn" data-payment-method="credito">Tarjeta de Crédito</button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-primary w-100 payment-method-btn" data-payment-method="transferencia">Transferencia</button>
+                        </div>
                     </div>
-                    <div>
-                        <input type="radio" id="debito" name="payment-method" value="debito">
-                        <label for="debito">Tarjeta de Débito</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="credito" name="payment-method" value="credito">
-                        <label for="credito">Tarjeta de Crédito</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="transferencia" name="payment-method" value="transferencia">
-                        <label for="transferencia">Transferencia</label>
-                    </div>
+                    <input type="hidden" id="payment-method" name="payment-method" value="efectivo">
                 </div>
 
-                <!-- Número de Transacción (visible para débito/credito) -->
+                <!-- Información Extra para pagos no en efectivo -->
                 <div id="transaction-info" class="mb-3" style="display: none;">
                     <label for="numero_transaccion" class="form-label">Número de Transacción</label>
-                    <input type="text" id="numero_transaccion" class="form-control">
+                    <input type="text" id="numero_transaccion" class="form-control" placeholder="Ingrese el número de transacción">
+                    <div id="banco-info" class="mt-2" style="display: none;">
+                        <label for="banco" class="form-label">Banco</label>
+                        <input type="text" id="banco" class="form-control" placeholder="Nombre del banco">
+                    </div>
                 </div>
 
                 <!-- Cantidad Pagada -->
                 <div class="mb-3">
                     <label class="form-label">Cantidad Pagada</label>
-                    <input type="text" id="cantidad_pagada" class="form-control">
+                    <input type="text" id="cantidad_pagada" class="form-control" placeholder="Ingrese la cantidad pagada">
                 </div>
 
                 <!-- Vuelto -->
                 <div class="mb-3">
                     <label class="form-label">Vuelto</label>
                     <p id="vuelto">$0.00</p>
-=======
-        <!-- Opciones de Pago -->
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
-            <div class="card p-3 h-100">
-                <h4 class="card-title">Opciones de Pago</h4>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Tipo de Venta</label>
-                    <div class="btn-group w-100" role="group" id="sale-type-group">
-                        <input type="radio" class="btn-check" name="sale-type" id="boleta" autocomplete="off" checked>
-                        <label class="btn btn-outline-primary" for="boleta">Boleta</label>
-                        <input type="radio" class="btn-check" name="sale-type" id="factura" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="factura">Factura</label>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Forma de Pago</label>
-                    <div class="btn-group w-100" role="group" id="payment-method-group">
-                        <input type="radio" class="btn-check" name="payment-method" id="efectivo" autocomplete="off" checked>
-                        <label class="btn btn-outline-primary" for="efectivo">Efectivo</label>
-                        <input type="radio" class="btn-check" name="payment-method" id="debito" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="debito">Débito</label>
-                        <input type="radio" class="btn-check" name="payment-method" id="credito" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="credito">Crédito</label>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="correo_cliente" class="form-label">Correo del Cliente (opcional):</label>
-                    <input type="email" id="correo_cliente" class="form-control" placeholder="ejemplo@correo.com">
-                </div>
-
-                <div class="mb-3">
-                    <label for="cantidad_pagada" class="form-label">Cliente Paga:</label>
-                    <input type="number" id="cantidad_pagada" class="form-control" placeholder="Ingrese el monto pagado">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Vuelto:</label>
-                    <span id="vuelto" class="form-control bg-white text-black">$0.00</span>
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
                 </div>
                 
                 <button type="button" id="confirmar-compra" class="btn btn-success w-100 mt-auto">Confirmar Compra</button>
@@ -193,7 +140,7 @@
     </div>
 </div>
 
-<!-- Modal para confirmar la compra y preguntar sobre la impresión -->
+<!-- Modal para confirmar la compra -->
 <div class="modal fade" id="confirmPurchaseModal" tabindex="-1" aria-labelledby="confirmPurchaseModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -202,11 +149,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-<<<<<<< HEAD
                 ¿Está seguro de la venta?
-=======
-                ¿Esta seguro de la venta?
->>>>>>> 3e3ff94d0698940333443d5f52b07eeea21d739b
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
@@ -215,5 +158,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+    <script src="{% static 'js/cashier.js' %}"></script>
 {% endblock %}

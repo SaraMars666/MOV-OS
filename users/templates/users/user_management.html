@@ -1,22 +1,19 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
+<div class="container content-max mt-4">
     <h2>Gestión de Usuarios</h2>
-    <br><br>
-    <!-- Botón para crear un nuevo usuario -->
-    <div class="text-right mb-3">
-        <a href="{% url 'create_user' %}" class="btn btn-primary">Crear Usuario</a>
-    </div>
-    <br>
-    <br><br>
-    <table class="table">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    <table class="table table-striped">
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Nombre de Usuario</th>
                 <th>Email</th>
-                <th>Rol</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -27,26 +24,23 @@
                 <td>{{ user.username }}</td>
                 <td>{{ user.email }}</td>
                 <td>
-                    {% if user.is_superuser %}
-                        Administrador
-                    {% else %}
-                        Usuario
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{% url 'edit_user' user.id %}" class="btn btn-sm btn-warning">Editar</a>
-                    <a href="{% url 'delete_user' user.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                    <a href="{% url 'edit_user' user.id %}" class="btn btn-warning btn-sm">Editar</a>
+                    <a href="{% url 'delete_user' user.id %}" class="btn btn-danger btn-sm">Eliminar</a>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="text-center">No hay usuarios registrados.</td>
+                <td colspan="4" class="text-center">No hay usuarios registrados.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    <br><br>
-    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Volver</a>
-    <br><br>
+    <a href="{% url 'create_user' %}" class="btn btn-primary">Crear Usuario</a>
+{% if request.user.is_superuser %}
+    {% url 'admin_dashboard' as back_href %}
+    {% include 'partials/back_button.html' with href=back_href text='Volver al Dashboard' %}
+{% endif %}
+
 </div>
+
 {% endblock %}

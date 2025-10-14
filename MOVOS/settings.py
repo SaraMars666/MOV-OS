@@ -16,7 +16,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-5o(k+1^on5m8ca--ieap-e%wqn6(#vnouc8%i3!tbt-((1%hh7'
 DEBUG = True
-ALLOWED_HOSTS = []
+# Permitir hosts en desarrollo (incluye 'testserver' para pruebas con Django test client)
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
+
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -31,14 +34,17 @@ INSTALLED_APPS = [
     'reports',
     'auth_app',
     'django.contrib.humanize',
+    'sucursales',
+    
 ]
+
 AUTH_USER_MODEL = 'auth_app.User'
 
-MIDDLEWARE = [  # CORRECCIÓN: Se eliminó el '*'
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # Desactivado
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -49,7 +55,7 @@ ROOT_URLCONF = 'MOVOS.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # Global templates directory
+        'DIRS': [BASE_DIR / 'templates'],  # Directorio global de plantillas
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -91,11 +97,11 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files configuration
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']  # For custom static files like CSS/JS
+STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-
-# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Umbral global para marcar stock como "bajo" (puede ser sobreescrito por cada sucursal)
+LOW_STOCK_THRESHOLD = 2

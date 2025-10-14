@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <h2>Crear Sucursal</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Crear Sucursal</button>
+    </form>
+    <br>
+    <a href="{% url 'sucursales:sucursal_list' %}" class="btn btn-secondary">Volver a la lista</a>
+</div>
+{% endblock %}

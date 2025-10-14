@@ -1,20 +1,22 @@
 #user/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.hashers import make_password
-from auth_app.models import User
-from .forms import UserForm  # Asegura que UserForm esté configurado con los campos necesarios
+from django.contrib import messages
+from django.db import transaction
+from .forms import UserForm
+from .models import Vendedor
+from django.contrib.auth import get_user_model, authenticate, login, logout
+from cashier.models import AperturaCierreCaja
+User = get_user_model()  # Importa el modelo de usuario personalizado
 
 
 def is_admin(user):
-    """Función auxiliar para verificar si un usuario es administrador."""
     return user.is_authenticated and user.is_staff
 
 
 @login_required
 def home(request):
-    """Redirige a la vista correcta según el rol del usuario."""
+    # Redirige según el rol
     if request.user.is_superuser:
         return redirect('admin_dashboard')
     else:
@@ -24,61 +26,96 @@ def home(request):
 @user_passes_test(is_admin, login_url='cashier_dashboard')
 @login_required
 def admin_dashboard(request):
-    """Vista del dashboard de administración (solo accesible para admin)."""
     return render(request, 'users/admin_dashboard.html')
 
 
-@login_required
-def cashier_dashboard(request):
-    """Vista del modo cajero (todos los usuarios pueden acceder)."""
-    return render(request, 'cashier/dashboard.html')
+## Nota: cashier_dashboard es provisto por la app 'cashier'.
 
 
 def custom_login(request):
-    """Manejo de autenticación personalizada."""
+    # Si ya está autenticado y vuelve a /login, redirigir según rol/estado de caja
+    if request.user.is_authenticated:
+        if request.user.is_staff or request.user.is_superuser:
+            return redirect('admin_dashboard')
+        # Usuario no admin: enviar al cajero si tiene caja abierta, si no a abrir caja
+        tiene_caja = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').exists()
+        return redirect('cashier_dashboard' if tiene_caja else 'abrir_caja')
+
     if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
+        username = request.POST.get('username')
+        password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user:
             login(request, user)
-            return redirect('home')  # Redirige a `home` para lógica de roles
+            # Redirigir inmediatamente según rol y estado de caja
+            if user.is_staff or user.is_superuser:
+                return redirect('admin_dashboard')
+            tiene_caja = AperturaCierreCaja.objects.filter(vendedor=user, estado='abierta').exists()
+            return redirect('cashier_dashboard' if tiene_caja else 'abrir_caja')
         else:
-            return render(request, 'users/login.html', {'error': 'Credenciales incorrectas'})
+            messages.error(request, "Credenciales incorrectas.")
+            return render(request, 'users/login.html')
     return render(request, 'users/login.html')
 
 
 @login_required
 def profile(request):
-    """Vista del perfil del usuario."""
     return render(request, 'users/profile.html', {'user': request.user})
 
 
-def custom_logout(request):
-    """Cerrar sesión y redirigir a login."""
+from django.contrib.auth import logout
+from django.contrib import messages
+
+def logout_view(request):
     logout(request)
+    # Consumir (vaciar) los mensajes
+    list(messages.get_messages(request))
     return redirect('login')
 
 
 @user_passes_test(is_admin, login_url='cashier_dashboard')
 @login_required
 def user_management(request):
-    """Vista de gestión de usuarios (solo accesible para admin)."""
+    # Si usas User directamente, lista los usuarios; si usas la extensión, quizá quieras listar Vendedor
     users = User.objects.all()
+    # Debug: imprime la cantidad de usuarios encontrados
+    print("Usuarios encontrados:", users.count())
     return render(request, 'users/user_management.html', {'users': users})
 
 
 @user_passes_test(is_admin, login_url='cashier_dashboard')
 @login_required
 def create_user(request):
-    """Crear un nuevo usuario (solo accesible para admin)."""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = UserForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.password = make_password(form.cleaned_data['password'])  # Hasheamos la contraseña
-            user.save()
-            return redirect('user_management')  # Redirige a gestión de usuarios después de crear
+            try:
+                with transaction.atomic():
+                    # Crear usuario básico usando el modelo personalizado
+                    username = form.cleaned_data['username']
+                    email = form.cleaned_data['email']
+                    password = form.cleaned_data['password']
+                    is_superuser = form.cleaned_data.get('is_superuser', False)
+                    user = User(
+                        username=username, 
+                        email=email, 
+                        is_superuser=is_superuser, 
+                        is_staff=is_superuser
+                    )
+                    user.set_password(password)
+                    user.save()
+                    # Crear el objeto Vendedor asociado pasando is_admin
+                    vendedor = Vendedor.objects.create(user=user, is_admin=is_superuser)
+                    sucursales = form.cleaned_data.get('sucursales_autorizadas')
+                    if sucursales:
+                        vendedor.sucursales_autorizadas.set([s.pk for s in sucursales])
+                messages.success(request, "Usuario creado exitosamente.")
+                return redirect("user_management")
+            except Exception as e:
+                print("Error al crear usuario:", e)
+                messages.error(request, f"Error al crear el usuario: {e}")
+        else:
+            messages.error(request, "Por favor corrija los errores en el formulario.")
     else:
         form = UserForm()
     return render(request, 'users/create_user.html', {'form': form})
@@ -87,25 +124,49 @@ def create_user(request):
 @user_passes_test(is_admin, login_url='cashier_dashboard')
 @login_required
 def edit_user(request, user_id):
-    """Editar usuario existente (solo accesible para admin)."""
-    user = get_object_or_404(User, id=user_id)
+    user_obj = get_object_or_404(User, id=user_id)
+    vendedor_obj = Vendedor.objects.filter(user=user_obj).first()
+    
     if request.method == 'POST':
-        form = UserForm(request.POST, instance=user)
+        form = UserForm(request.POST, instance=user_obj)
         if form.is_valid():
-            form.save()
-            return redirect('user_management')
+            try:
+                with transaction.atomic():
+                    user_obj.email = form.cleaned_data['email']
+                    user_obj.is_superuser = form.cleaned_data.get('is_superuser', False)
+                    user_obj.is_staff = form.cleaned_data.get('is_superuser', False)
+                    
+                    # Actualización de contraseña: si se ingresó un valor para password, 
+                    # se actualiza usando set_password()
+                    new_password = form.cleaned_data.get('password')
+                    if new_password:
+                        user_obj.set_password(new_password)
+                    
+                    user_obj.save()
+                    
+                    if vendedor_obj:
+                        sucursales = form.cleaned_data.get("sucursales_autorizadas")
+                        if sucursales:
+                            vendedor_obj.sucursales_autorizadas.set([s.pk for s in sucursales])
+                        else:
+                            vendedor_obj.sucursales_autorizadas.clear()
+                messages.success(request, "Usuario actualizado exitosamente.")
+                return redirect("user_management")
+            except Exception as e:
+                messages.error(request, f"Error al actualizar el usuario: {e}")
+        else:
+            messages.error(request, "Por favor corrija los errores en el formulario.")
     else:
-        form = UserForm(instance=user)
-    return render(request, 'users/edit_user.html', {'form': form, 'user': user})
+        form = UserForm(instance=user_obj)
+    return render(request, 'users/edit_user.html', {'form': form, 'user': user_obj})
 
 
 @user_passes_test(is_admin, login_url='cashier_dashboard')
 @login_required
 def delete_user(request, user_id):
-    """Eliminar usuario (solo accesible para admin)."""
-    user = get_object_or_404(User, id=user_id)
+    user_obj = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
-        user.delete()
+        user_obj.delete()
+        messages.success(request, "Usuario eliminado correctamente.")
         return redirect('user_management')
-    return render(request, 'users/delete_user.html', {'user': user})
-    
+    return render(request, 'users/delete_user.html', {'user': user_obj})

@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container content-max py-3">
+  <h3>Productos en {{ sucursal.nombre }}</h3>
+
+  <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-sm-6">
+      <label for="search" class="form-label">Buscar</label>
+      <input type="text" id="search" name="search" value="{{ search_query }}" class="form-control" placeholder="Nombre o código">
+    </div>
+    <div class="col-sm-3">
+      <label for="per_page" class="form-label">Elementos por página</label>
+      <select id="per_page" name="per_page" class="form-select">
+        {% for opt in per_page_options %}
+          <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-3">
+      <label for="stock" class="form-label">Stock</label>
+      <select id="stock" name="stock" class="form-select">
+        <option value="" {% if not stock_filter %}selected{% endif %}>Todos</option>
+        <option value="low" {% if stock_filter == 'low' %}selected{% endif %}>Bajo</option>
+        <option value="out" {% if stock_filter == 'out' %}selected{% endif %}>Agotado</option>
+      </select>
+    </div>
+    <div class="col-sm-3">
+      <button type="submit" class="btn btn-primary w-100">Aplicar</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-striped table-sm">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Código</th>
+          <th>Stock</th>
+          <th>Precio Venta</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in page_obj %}
+          {% with s=p.stock_sucursal|default:p.stock|default:0 %}
+          <tr class="{% if s <= 0 %}table-warning{% endif %}">
+            <td>{{ p.nombre }}</td>
+            <td>{{ p.producto_id }}</td>
+            <td>
+              {% if s <= 0 %}
+                <span class="badge bg-danger">Agotado</span>
+              {% elif s <= low_stock_threshold %}
+                <span class="badge bg-warning text-dark">Bajo ({{ s }})</span>
+              {% else %}
+                {{ s }}
+              {% endif %}
+            </td>
+            <td>${{ p.formatted_precio_venta }}</td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'transfer_stock' %}?producto={{ p.id }}&sucursal_origen={{ sucursal.id }}">Transferir</a>
+            </td>
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="4" class="text-center">Sin productos</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <nav aria-label="Paginación">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&per_page={{ per_page }}&search={{ search_query }}">Anterior</a></li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+      {% endif %}
+      <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&per_page={{ per_page }}&search={{ search_query }}">Siguiente</a></li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <hr>
+  <h5>Trabajadores habilitados para esta sucursal</h5>
+  <ul>
+    {% with workers=sucursal.vendedores_autorizados.all %}
+      {% if workers %}
+        {% for v in workers %}
+          <li>{{ v.user.username }}</li>
+        {% empty %}
+          <li>Sin trabajadores asignados</li>
+        {% endfor %}
+      {% else %}
+        <li>Sin trabajadores asignados</li>
+      {% endif %}
+    {% endwith %}
+  </ul>
+
+  {% if request.user.is_superuser %}
+    {% url 'sucursales:sucursal_list' as back_href %}
+    {% include 'partials/back_button.html' with href=back_href text='Volver a Sucursales' %}
+  {% endif %}
+</div>
+{% endblock %}

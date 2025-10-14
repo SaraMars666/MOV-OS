@@ -1,6 +1,7 @@
 from django import forms
-from .models import Product
-from decimal import Decimal
+from products.models import Product
+from sucursales.models import Sucursal
+from users.models import Vendedor
 
 class ProductForm(forms.ModelForm):
     """
@@ -11,7 +12,7 @@ class ProductForm(forms.ModelForm):
         fields = [
             'nombre', 'descripcion', 'producto_id', 'codigo_alternativo',
             'proveedor', 'fecha_ingreso_producto', 'precio_compra', 'precio_venta',
-            'cantidad', 'stock', 'codigo_barras', 'permitir_venta_sin_stock'
+            'cantidad', 'stock', 'codigo_barras', 'permitir_venta_sin_stock', 'sucursal'
         ]
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
@@ -29,7 +30,17 @@ class ProductForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # Recibimos el usuario (opcional) para filtrar las sucursales permitidas
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        if user and not (user.is_staff or user.is_superuser):
+            # Limitar las sucursales a las autorizadas al Vendedor asociado (modelo de la app users)
+            try:
+                vend = Vendedor.objects.get(user=user)
+                self.fields['sucursal'].queryset = vend.sucursales_autorizadas.all()
+            except Vendedor.DoesNotExist:
+                self.fields['sucursal'].queryset = Sucursal.objects.none()
+
         self.fields['nombre'].label = 'NOMBRE DEL PRODUCTO'
         self.fields['descripcion'].label = 'DESCRIPCIÓN'
         self.fields['producto_id'].label = 'CÓDIGO 1'
@@ -59,3 +70,17 @@ class ProductForm(forms.ModelForm):
     def clean(self):
         # La lógica de limpieza y cálculo automático se ha eliminado.
         return super().clean()
+
+class BulkAssignForm(forms.Form):
+    products = forms.ModelMultipleChoiceField(
+        queryset=Product.objects.all(),
+        widget=forms.SelectMultiple(attrs={'class': 'form-control select2'}),
+        required=True,
+        label="Productos"
+    )
+    sucursal = forms.ModelChoiceField(
+        queryset=Sucursal.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+        label="Sucursal a asignar"
+    )

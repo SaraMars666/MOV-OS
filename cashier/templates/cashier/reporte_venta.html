@@ -13,6 +13,10 @@
   <h2 class="mb-3">Detalle de Venta #{{ venta.id }}</h2>
   <p><strong>Fecha:</strong> {{ venta.fecha|date:"d M Y, H:i" }}</p>
   <p><strong>Empleado:</strong> {{ venta.empleado.username }}</p>
+  {# Caja vinculada oculta en vista del cajero #}
+  {% if sucursal %}
+    <p><strong>Sucursal:</strong> {{ sucursal.nombre }}</p>
+  {% endif %}
   <p><strong>Tipo de Venta:</strong> {{ venta.get_tipo_venta_display }}</p>
   <p><strong>Forma de Pago:</strong> {{ venta.get_forma_pago_display }}</p>
   {% if venta.forma_pago in "debito credito transferencia" %}
@@ -26,7 +30,7 @@
     <p><strong>Cliente Pagó:</strong> {{ formatted_cliente_paga }}</p>
     <p><strong>Vuelto Entregado:</strong> {{ formatted_vuelto_entregado }}</p>
   {% endif %}
-  
+
   <h4 class="mt-4">Productos Vendidos:</h4>
   <table class="table table-bordered table-sm">
     <thead class="table-light">
@@ -51,7 +55,13 @@
   
   <div class="no-print mt-3 d-flex gap-2">
     <button onclick="window.print()" class="btn btn-primary">Imprimir Detalle</button>
-    <a href="{% url 'cashier_dashboard' %}" class="btn btn-secondary">Volver</a>
+    {% if request.user.is_superuser %}
+      {% url 'reports:sales_history' as back_href %}
+      {% include 'partials/back_button.html' with href=back_href text='Volver al Historial de Ventas' %}
+    {% else %}
+      {% url 'cashier_dashboard' as back_href %}
+      {% include 'partials/back_button.html' with href=back_href text='Volver al Cajero' %}
+    {% endif %}
   </div>
 </div>
 {% endblock %}

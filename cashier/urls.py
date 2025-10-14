@@ -7,7 +7,6 @@ urlpatterns = [
     path('', views.cashier_dashboard, name='cashier_dashboard'),
     path('abrir-caja/', views.abrir_caja, name='abrir_caja'),
     path('cerrar_caja/', views.cerrar_caja, name='cerrar_caja'),
-
     path('buscar-producto/', views.buscar_producto, name='buscar_producto'),
     path('ajustar-cantidad/', views.ajustar_cantidad, name='ajustar_cantidad'),
     path('agregar-al-carrito/', views.agregar_al_carrito, name='agregar_al_carrito'),
@@ -15,8 +14,8 @@ urlpatterns = [
     path('limpiar-carrito/', views.limpiar_carrito, name='limpiar_carrito'),
     path('detalle-caja/<int:caja_id>/', views.detalle_caja, name='detalle_caja'),
     path('reporte/<int:venta_id>/', views.reporte_venta, name='reporte_venta'),
+    path('reporte/embed/<int:venta_id>/', views.reporte_venta_embed, name='reporte_venta_embed'),
+    path('print/venta/<int:venta_id>/', views.print_venta, name='print_venta'),
+    path('print/caja/<int:caja_id>/', views.print_caja, name='print_caja'),
     path('borrar-historial-caja/', views.delete_all_sales_and_cash_history, name='delete_all_sales_and_cash_history'),
-
-
-    
 ]

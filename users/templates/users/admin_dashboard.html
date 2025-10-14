@@ -7,6 +7,7 @@
 <div class="container">
     <h2 class="text-center mb-4">Bienvenido al Panel de Administración</h2>
     <div class="row justify-content-center">
+        <!-- Tarjeta de Gestión de Productos -->
         <div class="col-md-4 col-sm-6 mb-3">
             <div class="card text-center p-3 shadow-sm">
                 <h3 class="text-primary">Gestión de Productos</h3>
@@ -15,6 +16,7 @@
             </div>
         </div>
 
+        <!-- Tarjeta de Gestión de Usuarios -->
         <div class="col-md-4 col-sm-6 mb-3">
             <div class="card text-center p-3 shadow-sm">
                 <h3 class="text-primary">Gestión de Usuarios</h3>
@@ -23,14 +25,16 @@
             </div>
         </div>
 
+        <!-- Tarjeta de Gestión de Ventas -->
         <div class="col-md-4 col-sm-6 mb-3">
             <div class="card text-center p-3 shadow-sm">
                 <h3 class="text-primary">Gestión de Ventas</h3>
                 <p>Ver y generar reportes de ventas.</p>
-                <a href="{% url 'report_dashboard' %}" class="btn btn-primary">Ir a Gestión de Ventas</a>
+                <a href="{% url 'reports:report_dashboard' %}" class="btn btn-primary">Ir a Gestión de Ventas</a>
             </div>
         </div>
 
+        <!-- Tarjeta de Modo Cashier -->
         <div class="col-md-4 col-sm-6 mb-3">
             <div class="card text-center p-3 shadow-sm">
                 <h3 class="text-primary">Modo Cashier</h3>
@@ -38,6 +42,16 @@
                 <a href="{% url 'cashier_dashboard' %}" class="btn btn-primary">Ir a Modo Cashier</a>
             </div>
         </div>
+
+        <!-- Tarjeta de Gestión de Sucursales -->
+        <div class="col-md-4 col-sm-6 mb-3">
+            <div class="card text-center p-3 shadow-sm">
+                <h3 class="text-primary">Gestión de Sucursales</h3>
+                <p>Crear, editar o eliminar sucursales.</p>
+                <a href="{% url 'sucursales:sucursal_list' %}" class="btn btn-primary">Ir a Sucursales</a>
+            </div>
+        </div>
+
     </div>
 
     <div class="text-center mt-4">

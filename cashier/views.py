@@ -1,15 +1,19 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.contrib import messages
+from django.db import transaction
+from django.http import JsonResponse, HttpResponseForbidden
+from django.utils import timezone
+from django.db.models import Q, Sum, Count, F
+from django.urls import reverse
+from django.views.decorators.csrf import ensure_csrf_cookie
+import json
+import datetime
+from decimal import Decimal
+
 from .models import Venta, VentaDetalle, AperturaCierreCaja
 from products.models import Product
-from decimal import Decimal
-import json
-from django.http import JsonResponse
-from django.db import transaction
-from django.urls import reverse
-from django.utils import timezone
-from django.db import models
+from sucursales.models import Sucursal
 
 def format_currency(value):
     try:
@@ -18,35 +22,46 @@ def format_currency(value):
         return value
 
 def format_clp(value):
-    """
-    Convierte un valor (en centavos) a pesos chilenos dividiendo entre 100
-    y formateándolo a dos decimales con signo de peso.
-    """
     try:
-        pesos_val = float(value) / 100.0
-        # Puedes ajustar el formateo según convención; en este ejemplo usamos punto para miles y coma para decimales.
-        return "{:,.2f}".format(pesos_val)
+        pesos_val = float(value)
+        if pesos_val == 0:
+            return "0"
+        if pesos_val.is_integer():
+            formatted = "{:,.0f}".format(pesos_val)
+        else:
+            formatted = "{:,.2f}".format(pesos_val)
+        formatted = formatted.replace(",", "temp").replace(".", ",").replace("temp", ".")
+        return formatted
     except Exception:
         return value
 
 @transaction.atomic
 @login_required
+@ensure_csrf_cookie
 def cashier_dashboard(request):
-    """
-    Muestra la interfaz del cajero y procesa las ventas.
-    Si no hay caja abierta, redirige a 'abrir_caja'.
-    """
-    caja_abierta = AperturaCierreCaja.objects.filter(usuario=request.user, estado='abierta').first()
+    caja_id = request.GET.get('caja_id')
+    caja_abierta = None
+    if caja_id:
+        try:
+            caja_abierta = AperturaCierreCaja.objects.get(id=caja_id)
+            # Si no es admin, asegurar que es su propia caja
+            if not request.user.is_superuser and caja_abierta.vendedor_id != request.user.id:
+                return HttpResponseForbidden('No tienes permiso para acceder a esta caja.')
+            if caja_abierta.estado != 'abierta':
+                caja_abierta = None
+        except AperturaCierreCaja.DoesNotExist:
+            caja_abierta = None
+    if not caja_abierta:
+        caja_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
     if not caja_abierta:
         return redirect('abrir_caja')
-
     if request.method == 'GET':
-        productos = Product.objects.all()
+        # Mostrar productos de la sucursal de la caja abierta (vista inicial)
+        productos = Product.objects.filter(sucursal=caja_abierta.sucursal)
         return render(request, 'cashier/cashier.html', {
             'productos': productos,
             'caja_abierta': caja_abierta
         })
-
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -56,7 +71,6 @@ def cashier_dashboard(request):
             cliente_paga = Decimal(str(data.get('cliente_paga', '0')))
             numero_transaccion = data.get('numero_transaccion', '').strip()
             banco = data.get('banco', '').strip() if forma_pago == "transferencia" else ""
-            
             if forma_pago in ["debito", "credito", "transferencia"] and not numero_transaccion:
                 return JsonResponse({
                     "error": "El número de transacción es obligatorio para pagos con tarjeta y transferencia."
@@ -67,18 +81,24 @@ def cashier_dashboard(request):
                 }, status=400)
             if not carrito:
                 return JsonResponse({"error": "El carrito está vacío."}, status=400)
-        
             total = Decimal('0.00')
             for item in carrito:
                 producto = get_object_or_404(Product, id=item.get('producto_id'))
                 cantidad = int(item.get('cantidad', 1))
+                # Validar que el producto pertenezca a la sucursal o sea vendible sin sucursal (permitido)
+                pertenece_o_permitido = (
+                    producto.sucursal_id == caja_abierta.sucursal_id or
+                    (producto.sucursal_id is None and producto.permitir_venta_sin_stock)
+                )
+                if not pertenece_o_permitido:
+                    return JsonResponse({
+                        "error": f"El producto '{producto.nombre}' no pertenece a la sucursal de la caja abierta."
+                    }, status=400)
                 total += Decimal(str(cantidad)) * producto.precio_venta
-        
             if forma_pago == 'efectivo' and cliente_paga < total:
                 return JsonResponse({
                     "error": f"Pago insuficiente. El total es ${format_currency(total)}, pero el cliente pagó ${format_currency(cliente_paga)}."
                 }, status=400)
-        
             with transaction.atomic():
                 venta = Venta.objects.create(
                     empleado=request.user,
@@ -88,149 +108,264 @@ def cashier_dashboard(request):
                     cliente_paga=cliente_paga if forma_pago == "efectivo" else Decimal('0.00'),
                     vuelto_entregado=Decimal('0.00'),
                     numero_transaccion=numero_transaccion if forma_pago in ["debito", "credito", "transferencia"] else "",
-                    banco=banco
+                    banco=banco,
+                    sucursal=caja_abierta.sucursal,   # Se asigna la sucursal de la caja abierta
+                    caja=caja_abierta
                 )
-            
                 for item in carrito:
                     producto = get_object_or_404(Product, id=item.get('producto_id'))
                     cantidad = int(item.get('cantidad', 1))
-                
-                    if not producto.permitir_venta_sin_stock and producto.stock < cantidad:
-                        return JsonResponse({"error": f"El producto '{producto.nombre}' no tiene suficiente stock."}, status=400)
-                
+                    # Verificar stock por sucursal y pertenencia, permitiendo productos sin sucursal si lo permiten
+                    pertenece_o_permitido = (
+                        producto.sucursal_id == caja_abierta.sucursal_id or
+                        (producto.sucursal_id is None and producto.permitir_venta_sin_stock)
+                    )
+                    if not pertenece_o_permitido:
+                        return JsonResponse({"error": f"El producto '{producto.nombre}' no pertenece a esta sucursal."}, status=400)
+                    # Stock disponible: si tiene sucursal, usar stock_en; si no tiene sucursal, usar stock global
+                    disponible = producto.stock_en(caja_abierta.sucursal) if producto.sucursal_id else (producto.stock or 0)
+                    if not producto.permitir_venta_sin_stock and disponible < cantidad:
+                        return JsonResponse({"error": f"El producto '{producto.nombre}' no tiene suficiente stock. Disponible: {disponible}."}, status=400)
                 for item in carrito:
                     producto = get_object_or_404(Product, id=item.get('producto_id'))
                     cantidad = int(item.get('cantidad', 1))
-                    producto.stock = max(0, producto.stock - cantidad)
-                    producto.save()
-                    
+                    # Descontar respetando inventario por sucursal; si el producto no tiene sucursal, descontar stock global
+                    if producto.sucursal_id:
+                        producto.decrementar_stock_en(caja_abierta.sucursal, cantidad)
+                    else:
+                        # Producto sin sucursal: ajustar stock global (si queda negativo, se fuerza a 0)
+                        try:
+                            nuevo_stock = max(0, (producto.stock or 0) - cantidad)
+                            if nuevo_stock != (producto.stock or 0):
+                                producto.stock = nuevo_stock
+                                producto.save(update_fields=['stock'])
+                        except Exception:
+                            # Si por algún motivo no se puede ajustar, continuar (venta sin stock lo permite)
+                            pass
                     VentaDetalle.objects.create(
                         venta=venta,
                         producto=producto,
                         cantidad=cantidad,
                         precio_unitario=producto.precio_venta
                     )
-            
                 venta.total = total
                 if forma_pago == "efectivo":
                     venta.vuelto_entregado = max(Decimal('0.00'), cliente_paga - total)
                 venta.save()
-        
             reporte_url = reverse('reporte_venta', args=[venta.id])
             return JsonResponse({
                 "success": True,
                 "mensaje": "Compra confirmada con éxito.",
                 "reporte_url": reporte_url
             })
-    
         except (json.JSONDecodeError, KeyError, ValueError, Product.DoesNotExist) as e:
             return JsonResponse({"error": f"Error en los datos enviados o producto no encontrado: {str(e)}"}, status=400)
         except Exception as e:
             return JsonResponse({"error": f"Ocurrió un error inesperado: {str(e)}"}, status=500)
-
     return JsonResponse({"error": "Método no permitido."}, status=405)
 
-# 📌 CERRAR CAJA
+import json
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_protect
+from django.utils import timezone
+from .models import AperturaCierreCaja
+
 @login_required
+@csrf_protect
+@transaction.atomic
 def cerrar_caja(request):
-    caja_abierta = AperturaCierreCaja.objects.filter(usuario=request.user, estado='abierta').first()
-    if not caja_abierta:
-        return JsonResponse({"error": "No tienes una caja abierta para cerrar."}, status=403)
+    if request.method != "POST":
+        return JsonResponse({'error': 'Método no permitido.'}, status=405)
+    try:
+        data = {}
+        if request.body:
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                data = {}
+        caja_id = data.get('caja_id')
+        if caja_id:
+            caja = get_object_or_404(AperturaCierreCaja, id=caja_id)
+            if not (request.user.is_superuser or caja.vendedor_id == request.user.id):
+                return HttpResponseForbidden('No tienes permiso para cerrar esta caja.')
+        else:
+            caja = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+            if not caja:
+                return JsonResponse({'error': 'No tienes una caja abierta para cerrar.'}, status=400)
+        if caja.estado == 'cerrada':
+            return JsonResponse({'error': 'La caja ya está cerrada.'}, status=400)
+        # Calcular totales del periodo de la caja
+        fecha_fin = timezone.now()
+        ventas_qs = Venta.objects.filter(
+            empleado=caja.vendedor,
+            fecha__gte=caja.apertura,
+            fecha__lte=fecha_fin
+        )
+        total_ventas = ventas_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        ventas_efectivo = ventas_qs.filter(forma_pago='efectivo').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        ventas_debito = ventas_qs.filter(forma_pago='debito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        ventas_credito = ventas_qs.filter(forma_pago='credito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+        vuelto_total = ventas_qs.aggregate(total=Sum('vuelto_entregado'))['total'] or Decimal('0.00')
+        efectivo_final = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo - vuelto_total
+        # Persistir estado y métricas básicas
+        caja.cierre = fecha_fin
+        caja.estado = 'cerrada'
+        caja.ventas_totales = total_ventas
+        caja.total_ventas_efectivo = ventas_efectivo
+        caja.total_ventas_debito = ventas_debito
+        caja.total_ventas_credito = ventas_credito
+        caja.vuelto_entregado = vuelto_total
+        caja.efectivo_final = efectivo_final
+        caja.save()
+        detalle_url = reverse('detalle_caja', args=[caja.id])
+        return JsonResponse({'success': True, 'detalle_url': detalle_url})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
-    # 📊 Obtener ventas del día
-    ventas_del_dia = Venta.objects.filter(empleado=request.user, fecha__gte=caja_abierta.fecha_apertura)
-
-    # 📊 Calcular totales
-    total_ventas = ventas_del_dia.aggregate(total=models.Sum('total'))['total'] or Decimal('0.00')
-    total_efectivo = ventas_del_dia.filter(forma_pago='efectivo').aggregate(total=models.Sum('total'))['total'] or Decimal('0.00')
-    total_credito = ventas_del_dia.filter(forma_pago='credito').aggregate(total=models.Sum('total'))['total'] or Decimal('0.00')
-    total_debito = ventas_del_dia.filter(forma_pago='debito').aggregate(total=models.Sum('total'))['total'] or Decimal('0.00')
-    vuelto_entregado = ventas_del_dia.filter(forma_pago='efectivo').aggregate(total=models.Sum('vuelto_entregado'))['total'] or Decimal('0.00')
-
-    # 📌 Calcular efectivo final (NO incluir pagos con tarjeta)
-    efectivo_final = caja_abierta.efectivo_inicial + total_efectivo - vuelto_entregado
-
-    if request.method == 'POST':
-        caja_abierta.ventas_totales = total_ventas
-        caja_abierta.total_ventas_efectivo = total_efectivo 
-        caja_abierta.total_ventas_credito = total_credito 
-        caja_abierta.total_ventas_debito = total_debito 
-        caja_abierta.vuelto_entregado = vuelto_entregado
-        caja_abierta.efectivo_final = efectivo_final 
-        caja_abierta.estado = 'cerrada'
-        caja_abierta.fecha_cierre = timezone.now()
-        caja_abierta.save()
-
-        return JsonResponse({
-            "success": True,
-            "mensaje": "Caja cerrada correctamente.",
-            "caja_id": caja_abierta.id
-        })
-
-    return JsonResponse({"error": "Método no permitido."}, status=405)
-
-# 📌 DETALLE DE CIERRE DE CAJA
 @login_required
 def detalle_caja(request, caja_id):
-    """Muestra el resumen de la caja cerrada con los valores formateados en pesos chilenos."""
     caja = get_object_or_404(AperturaCierreCaja, id=caja_id)
+    # Si la caja está abierta y el usuario es admin, redirigir a la vista del cajero con esa caja
+    if caja.estado == 'abierta' and request.user.is_superuser:
+        return redirect(f"{reverse('cashier_dashboard')}?caja_id={caja.id}")
+    # Establecemos el rango de ventas: desde la apertura hasta la fecha de cierre (o ahora si está abierta)
+    fecha_fin = caja.cierre if caja.cierre else timezone.now()
+    ventas_qs = Venta.objects.filter(
+        empleado=caja.vendedor,
+        fecha__gte=caja.apertura,
+        fecha__lte=fecha_fin
+    )
+    ventas_total = ventas_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_efectivo = ventas_qs.filter(forma_pago='efectivo').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_debito = ventas_qs.filter(forma_pago='debito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_credito = ventas_qs.filter(forma_pago='credito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_transferencia = ventas_qs.filter(forma_pago='transferencia').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    vuelto_total = ventas_qs.aggregate(total=Sum('vuelto_entregado'))['total'] or Decimal('0.00')
+    efectivo_final_calc = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo - vuelto_total
+    
     contexto = {
         'caja': caja,
         'formatted_efectivo_inicial': "$" + format_clp(caja.efectivo_inicial or Decimal('0.00')),
-        'formatted_total_debito': "$" + format_clp(caja.total_ventas_debito or Decimal('0.00')),
-        'formatted_total_credito': "$" + format_clp(caja.total_ventas_credito or Decimal('0.00')),
-        'formatted_total_efectivo': "$" + format_clp(caja.total_ventas_efectivo or Decimal('0.00')),
-        'formatted_vuelto_entregado': "$" + format_clp(caja.vuelto_entregado or Decimal('0.00')),
-        'formatted_efectivo_final': "$" + format_clp(caja.efectivo_final or caja.efectivo_inicial or Decimal('0.00')),
-        'formatted_total_ventas': "$" + format_clp(caja.ventas_totales or Decimal('0.00'))
+        'formatted_total_debito': "$" + format_clp(ventas_debito),
+        'formatted_total_credito': "$" + format_clp(ventas_credito),
+    'formatted_total_transferencia': "$" + format_clp(ventas_transferencia),
+        'formatted_total_efectivo': "$" + format_clp(ventas_efectivo),
+        'formatted_vuelto_entregado': "$" + format_clp(vuelto_total),
+        'formatted_efectivo_final': "$" + format_clp(efectivo_final_calc),
+        'formatted_total_ventas': "$" + format_clp(ventas_total)
     }
     return render(request, 'cashier/detalle_caja.html', contexto)
 
-# 📌 HISTORIAL DE CAJAS
+@login_required
+def print_venta(request, venta_id):
+    venta = get_object_or_404(Venta, id=venta_id)
+    detalles = venta.detalles.all()
+    total_formatted = "$" + format_currency(venta.total or 0)
+    cliente_paga_formatted = "$" + format_currency(venta.cliente_paga or 0)
+    vuelto_formatted = "$" + format_currency(venta.vuelto_entregado or 0)
+    detalles_data = []
+    for d in detalles:
+        subtotal = d.cantidad * d.precio_unitario
+        detalles_data.append({
+            'producto': d.producto,
+            'cantidad': d.cantidad,
+            'precio_unitario': d.precio_unitario,
+            'formatted_subtotal': "$" + format_currency(subtotal)
+        })
+    ctx = {
+        'venta': venta,
+        'detalles': detalles_data,
+        'formatted_total': total_formatted,
+        'formatted_cliente_paga': cliente_paga_formatted,
+        'formatted_vuelto_entregado': vuelto_formatted,
+        'sucursal': venta.sucursal,
+    }
+    return render(request, 'cashier/print_venta.html', ctx)
+
+@login_required
+def print_caja(request, caja_id):
+    caja = get_object_or_404(AperturaCierreCaja, id=caja_id)
+    fecha_fin = caja.cierre if caja.cierre else timezone.now()
+    ventas_qs = Venta.objects.filter(
+        empleado=caja.vendedor,
+        fecha__gte=caja.apertura,
+        fecha__lte=fecha_fin
+    )
+    ventas_total = ventas_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_efectivo = ventas_qs.filter(forma_pago='efectivo').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_debito = ventas_qs.filter(forma_pago='debito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_credito = ventas_qs.filter(forma_pago='credito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    ventas_transferencia = ventas_qs.filter(forma_pago='transferencia').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+    vuelto_total = ventas_qs.aggregate(total=Sum('vuelto_entregado'))['total'] or Decimal('0.00')
+    efectivo_final_calc = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo - vuelto_total
+    ctx = {
+        'caja': caja,
+        'formatted_efectivo_inicial': "$" + format_clp(caja.efectivo_inicial or Decimal('0.00')),
+        'formatted_total_debito': "$" + format_clp(ventas_debito),
+        'formatted_total_credito': "$" + format_clp(ventas_credito),
+        'formatted_total_transferencia': "$" + format_clp(ventas_transferencia),
+        'formatted_total_efectivo': "$" + format_clp(ventas_efectivo),
+        'formatted_vuelto_entregado': "$" + format_clp(vuelto_total),
+        'formatted_total_ventas': "$" + format_clp(ventas_total),
+        'formatted_efectivo_final': "$" + format_clp(efectivo_final_calc),
+    }
+    return render(request, 'cashier/print_caja.html', ctx)
+
 @login_required
 def historial_caja(request):
-    """Lista todas las cajas abiertas/cerradas."""
-    historial_cajas = AperturaCierreCaja.objects.all().order_by('-fecha_apertura')
+    historial_cajas = AperturaCierreCaja.objects.all().order_by('-apertura')
     return render(request, 'cashier/historial_caja.html', {'historial_cajas': historial_cajas})
 
-# 📌 BUSCAR PRODUCTO
 @login_required
 def buscar_producto(request):
-    """
-    Busca productos por nombre o código de barras.
-    Devuelve un JSON con la lista de productos encontrados.
-    """
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'productos': []})
-    productos = Product.objects.filter(
+    # Filtrar por sucursal de la caja abierta del usuario
+    caja_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+    # Base query por texto
+    base_qs = Product.objects.filter(
         Q(nombre__icontains=query) |
         Q(producto_id__icontains=query) |
-        Q(codigo_alternativo__icontains=query) | 
+        Q(codigo_alternativo__icontains=query) |
         Q(codigo_barras__icontains=query)
     )
-    resultados = [{
-        'id': p.id,
-        'nombre': p.nombre,
-        'precio_venta': str(p.precio_venta)
-    } for p in productos]
+    # Mostrar todos los productos que coincidan; el frontend indicará si se pueden agregar o no
+    productos = base_qs
+    # Calcular stock por sucursal cuando procede
+    resultados = []
+    for p in productos:
+        # Determinar si el producto se puede vender desde la sucursal actual
+        en_sucursal = True
+        if caja_abierta and caja_abierta.sucursal_id:
+            en_sucursal = (
+                p.sucursal_id == caja_abierta.sucursal_id or
+                (p.sucursal_id is None and p.permitir_venta_sin_stock)
+            )
+        # Calcular stock a mostrar
+        if p.sucursal_id and caja_abierta and caja_abierta.sucursal_id:
+            stock_val = p.stock_en(caja_abierta.sucursal)
+        else:
+            stock_val = p.stock or 0
+        resultados.append({
+            'id': p.id,
+            'nombre': p.nombre,
+            'precio_venta': str(p.precio_venta),
+            'stock': stock_val,
+            'permitir_venta_sin_stock': p.permitir_venta_sin_stock,
+            'en_sucursal': en_sucursal
+        })
     return JsonResponse({'productos': resultados})
 
-# 📌 REPORTE DE VENTA
 @login_required
 def reporte_venta(request, venta_id):
-    """
-    Reporte detallado de una venta.
-    Se calculan en la vista los valores formateados y se pasan al template mediante el contexto.
-    """
     venta = get_object_or_404(Venta, id=venta_id)
+    embed_mode = request.GET.get('embed') == '1'
     detalles = venta.detalles.all()
-    
-    total_formatted = "$" + format_currency(getattr(venta, 'total', 0))
-    cliente_paga_formatted = "$" + format_currency(getattr(venta, 'cliente_paga', 0))
-    vuelto_formatted = "$" + format_currency(getattr(venta, 'vuelto_entregado', 0))
-    
-    # Construir una lista de diccionarios en lugar de modificar la instancia
+    total_formatted = "$" + format_currency(venta.total or 0)
+    cliente_paga_formatted = "$" + format_currency(venta.cliente_paga or 0)
+    vuelto_formatted = "$" + format_currency(venta.vuelto_entregado or 0)
     detalles_data = []
     for detalle in detalles:
         subtotal = detalle.cantidad * detalle.precio_unitario
@@ -240,124 +375,130 @@ def reporte_venta(request, venta_id):
             'precio_unitario': detalle.precio_unitario,
             'formatted_subtotal': "$" + format_currency(subtotal)
         })
-    
     context = {
          'venta': venta,
          'detalles': detalles_data,
          'formatted_total': total_formatted,
          'formatted_cliente_paga': cliente_paga_formatted,
          'formatted_vuelto_entregado': vuelto_formatted,
+         'sucursal': venta.sucursal  # Se asume que Venta tiene campo 'sucursal'
     }
+    if embed_mode:
+        return render(request, 'cashier/partials/reporte_venta_embed.html', context)
     return render(request, 'cashier/reporte_venta.html', context)
 
-# 📌 AJUSTAR CANTIDAD EN EL CARRITO
+@login_required
+def reporte_venta_embed(request, venta_id):
+    """Versión embebible del detalle de venta para usar dentro del modal del cajero."""
+    venta = get_object_or_404(Venta, id=venta_id)
+    detalles = venta.detalles.all()
+    total_formatted = "$" + format_currency(venta.total or 0)
+    cliente_paga_formatted = "$" + format_currency(venta.cliente_paga or 0)
+    vuelto_formatted = "$" + format_currency(venta.vuelto_entregado or 0)
+    detalles_data = []
+    for detalle in detalles:
+        subtotal = detalle.cantidad * detalle.precio_unitario
+        detalles_data.append({
+            'producto': detalle.producto,
+            'cantidad': detalle.cantidad,
+            'precio_unitario': detalle.precio_unitario,
+            'formatted_subtotal': "$" + format_currency(subtotal)
+        })
+    context = {
+         'venta': venta,
+         'detalles': detalles_data,
+         'formatted_total': total_formatted,
+         'formatted_cliente_paga': cliente_paga_formatted,
+         'formatted_vuelto_entregado': vuelto_formatted,
+         'sucursal': venta.sucursal
+    }
+    return render(request, 'cashier/partials/reporte_venta_embed.html', context)
+
 @login_required
 def ajustar_cantidad(request):
-    """Ajusta la cantidad de un producto en el carrito de compras."""
     if request.method != 'POST':
         return JsonResponse({"error": "Método no permitido."}, status=405)
-
     try:
         data = json.loads(request.body)
         producto_id = int(data.get('producto_id'))
         cambio_cantidad = int(data.get('cantidad'))
-        
         producto = get_object_or_404(Product, id=producto_id)
-        
         carrito = request.session.get('carrito', [])
-        
         found = False
         for item in carrito:
             if item['producto_id'] == producto_id:
                 found = True
                 nueva_cantidad = item['cantidad'] + cambio_cantidad
-                
                 if nueva_cantidad <= 0:
                     carrito.remove(item)
                 else:
                     item['cantidad'] = nueva_cantidad
                 break
-        
         if not found:
             return JsonResponse({"error": "Producto no encontrado en el carrito."}, status=404)
-
         request.session['carrito'] = carrito
         request.session.modified = True
-
         return JsonResponse({"mensaje": "Cantidad ajustada correctamente.", "carrito": carrito})
-
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-# 📌 AGREGAR PRODUCTO AL CARRITO
 @login_required
 def agregar_al_carrito(request):
-    """Añade un producto al carrito, fijando la cantidad en 1 siempre."""
-    caja_abierta = AperturaCierreCaja.objects.filter(usuario=request.user, estado='abierta').first()
+    caja_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
     if not caja_abierta:
         return JsonResponse({'error': 'No tienes una caja abierta.'}, status=403)
-
     if request.method != "POST":
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-
     try:
         data = json.loads(request.body)
         producto_id = data.get("producto_id")
-        # Se fija la cantidad a 1 siempre
         cantidad = 1
-
         producto = get_object_or_404(Product, id=producto_id)
-        
-        if not producto.permitir_venta_sin_stock and producto.stock < cantidad:
+        # Asegurar que el producto pertenezca a la sucursal de la caja o sea vendible sin sucursal
+        pertenece_o_permitido = (
+            producto.sucursal_id == caja_abierta.sucursal_id or
+            (producto.sucursal_id is None and producto.permitir_venta_sin_stock)
+        )
+        if not pertenece_o_permitido:
+            return JsonResponse({"error": "Este producto no pertenece a la sucursal de la caja abierta."}, status=400)
+        # Determinar stock disponible
+        disponible = producto.stock_en(caja_abierta.sucursal) if producto.sucursal_id else (producto.stock or 0)
+        if not producto.permitir_venta_sin_stock and disponible < cantidad:
             return JsonResponse({"error": "Stock insuficiente para este producto."}, status=400)
-
         carrito = request.session.get('carrito', [])
-
-        # Si el producto ya existe en el carrito, se resetea su cantidad a 1.
         found = False
         for item in carrito:
             if item['producto_id'] == producto.id:
                 item['cantidad'] = cantidad
                 found = True
                 break
-
         if not found:
             carrito.append({
                 'producto_id': producto.id,
                 'nombre': producto.nombre,
                 'precio': str(producto.precio_venta),
                 'cantidad': cantidad,
+                'stock': disponible,
+                'permitir_venta_sin_stock': producto.permitir_venta_sin_stock,
             })
-
         request.session['carrito'] = carrito
         request.session.modified = True
-
         return JsonResponse({'mensaje': 'Producto agregado al carrito', 'carrito': carrito})
-
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-# 📌 LISTAR PRODUCTOS DEL CARRITO
 @login_required
 def listar_carrito(request):
-    """Devuelve el contenido del carrito actual."""
     carrito = request.session.get('carrito', [])
     return JsonResponse({'carrito': carrito})
 
-# 📌 LIMPIAR EL CARRITO
 @login_required
 def limpiar_carrito(request):
-    """Elimina todos los productos del carrito."""
     request.session['carrito'] = []
     request.session.modified = True
     return JsonResponse({'mensaje': 'Carrito limpio con éxito'})
 
 def delete_all_sales_and_cash_history(request):
-    """
-    Elimina todo el historial de ventas y registros de caja.
-    Esta vista debe ser usada solo una vez antes del despliegue final
-    y luego eliminada del código.
-    """
     if request.method == 'POST':
         try:
             Venta.objects.all().delete()
@@ -367,25 +508,169 @@ def delete_all_sales_and_cash_history(request):
             messages.error(request, f'Ocurrió un error al eliminar los datos: {e}')
     return redirect('products_management')
 
-# 📌 ABRIR CAJA
 @login_required
 def abrir_caja(request):
-    """
-    Vista para abrir una caja. Si el método es GET, muestra el formulario para abrir caja;
-    si es POST, procesa la apertura.
-    """
+    if not request.user.is_superuser:
+        try:
+            vendedor = request.user.vendedor
+        except Exception:
+            messages.error(request, "No se encontró el perfil de vendedor asociado.")
+            return redirect('home')
+        sucursales = vendedor.sucursales_autorizadas.all()
+    else:
+        sucursales = Sucursal.objects.all()
+
     if request.method == "POST":
-        # Aquí debería ir la lógica para abrir la caja.
-        # Por ejemplo, se pueden leer datos del POST y crear un objeto AperturaCierreCaja.
-        # Suponiendo que la apertura requiere al menos un monto inicial:
-        monto_inicial = Decimal(request.POST.get('efectivo_inicial', '0'))
-        # Crear la caja abierta:
-        caja = AperturaCierreCaja.objects.create(
-            usuario=request.user,
-            efectivo_inicial=monto_inicial,
-            estado='abierta'
-        )
-        # Redirige al dashboard del cajero una vez que se abre la caja.
-        return redirect('cashier_dashboard')
-    # Si es GET, muestra el formulario para abrir caja.
-    return render(request, 'cashier/abrir_caja.html')
+        sucursal_id = request.POST.get('sucursal')
+        efectivo_inicial = request.POST.get('efectivo_inicial', '0')
+        if not sucursal_id:
+            messages.error(request, "Seleccione una sucursal.")
+            return redirect('abrir_caja')
+        sucursal = get_object_or_404(Sucursal, id=sucursal_id)
+        # Validar que el usuario no admin esté autorizado para la sucursal seleccionada
+        if not request.user.is_superuser:
+            try:
+                vendedor = request.user.vendedor
+                if not vendedor.sucursales_autorizadas.filter(id=sucursal.id).exists():
+                    messages.error(request, "No está autorizado para abrir caja en esta sucursal.")
+                    return redirect('abrir_caja')
+            except Exception:
+                messages.error(request, "No se encontró el perfil de vendedor asociado.")
+                return redirect('home')
+        try:
+            with transaction.atomic():
+                # Regla 1: Sólo una caja abierta por sucursal
+                existente_en_sucursal = AperturaCierreCaja.objects.filter(sucursal=sucursal, estado='abierta').first()
+                if existente_en_sucursal:
+                    messages.warning(request, f"Ya existe una caja abierta en la sucursal {sucursal.nombre} (Caja #{existente_en_sucursal.id}).")
+                    # Si el usuario es admin, redirigir a cashier usando esa caja
+                    if request.user.is_superuser:
+                        return redirect(f"{reverse('cashier_dashboard')}?caja_id={existente_en_sucursal.id}")
+                    # Usuario no admin: redirigir al cashier de su propia caja abierta si la tiene o bloquear
+                    propia_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+                    if propia_abierta:
+                        return redirect('cashier_dashboard')
+                    return redirect('abrir_caja')
+
+                # Regla 2: Usuario no admin sólo puede tener una caja abierta total
+                if not request.user.is_superuser:
+                    abierta_usuario = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+                    if abierta_usuario:
+                        messages.info(request, f"Ya tienes una caja abierta (Caja #{abierta_usuario.id}).")
+                        return redirect('cashier_dashboard')
+                caja = AperturaCierreCaja.objects.create(
+                    vendedor=request.user,
+                    sucursal=sucursal,
+                    efectivo_inicial=efectivo_inicial
+                )
+            messages.success(request, f"Caja abierta en sucursal {sucursal.nombre}.")
+            return redirect('cashier_dashboard')
+        except Exception as e:
+            messages.error(request, f"Error al abrir caja: {e}")
+    context = {'sucursales': sucursales}
+    return render(request, 'cashier/abrir_caja.html', context)
+
+@login_required
+def advanced_reports(request):
+    fecha_inicio_str = request.GET.get('fecha_inicio')
+    fecha_fin_str = request.GET.get('fecha_fin')
+    try:
+        if fecha_inicio_str:
+            fecha_inicio = datetime.datetime.strptime(fecha_inicio_str, '%Y-%m-%d')
+            fecha_inicio = timezone.make_aware(fecha_inicio)
+        else:
+            fecha_inicio = timezone.now() - datetime.timedelta(days=30)
+    except ValueError:
+        fecha_inicio = timezone.now() - datetime.timedelta(days=30)
+    try:
+        if fecha_fin_str:
+            fecha_fin = datetime.datetime.strptime(fecha_fin_str, '%Y-%m-%d')
+            fecha_fin = timezone.make_aware(fecha_fin) + datetime.timedelta(days=1, seconds=-1)
+        else:
+            fecha_fin = timezone.now()
+    except ValueError:
+        fecha_fin = timezone.now()
+    ventas_qs = Venta.objects.filter(fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+    agg_ventas = ventas_qs.aggregate(
+        ingreso_total=Sum('total'),
+        num_transacciones=Count('id')
+    )
+    ingreso_total = agg_ventas.get('ingreso_total') or Decimal('0.00')
+    num_transacciones = agg_ventas.get('num_transacciones') or 0
+    agg_unidades = VentaDetalle.objects.filter(venta__in=ventas_qs).aggregate(total_unidades=Sum('cantidad'))
+    total_unidades = agg_unidades.get('total_unidades') or 0
+    agg_cmv = VentaDetalle.objects.filter(venta__in=ventas_qs).aggregate(
+        cmv=Sum(F('cantidad') * F('producto__precio_compra'))
+    )
+    cmv_val = agg_cmv.get('cmv') or 0
+    cmv = Decimal(str(cmv_val))
+    if ingreso_total > 0:
+        ingreso_sin_iva = (ingreso_total / Decimal('1.19')).quantize(Decimal('0.01'))
+        iva_total_calc = ingreso_total - ingreso_sin_iva
+    else:
+        ingreso_sin_iva = Decimal('0.00')
+        iva_total_calc = Decimal('0.00')
+    cmv_net = (cmv / Decimal('1.19')).quantize(Decimal('0.01')) if cmv else Decimal('0.00')
+    ganancia_real = ingreso_sin_iva - cmv_net
+    margen = ((ganancia_real / ingreso_sin_iva) * Decimal('100')).quantize(Decimal('0.01')) if ingreso_sin_iva > 0 else Decimal('0.00')
+    ticket_promedio = (ingreso_total / num_transacciones) if num_transacciones > 0 else Decimal('0.00')
+    unidades_promedio = (total_unidades / num_transacciones) if num_transacciones > 0 else 0
+    promedio_ganancia_neta = Decimal('0.00')
+    promedio_porcentaje_ganancia = Decimal('0.00')
+    best_selling = VentaDetalle.objects.filter(venta__in=ventas_qs) \
+                    .values('producto__nombre') \
+                    .annotate(total_cantidad=Sum('cantidad')) \
+                    .order_by('-total_cantidad') \
+                    .first()
+    best_selling_product = best_selling['producto__nombre'] if best_selling else "N/A"
+    best_selling_quantity = best_selling['total_cantidad'] if best_selling else 0
+    sales_by_payment_type = Venta.objects.filter(
+        fecha__gte=fecha_inicio, fecha__lte=fecha_fin
+    ).values('forma_pago').annotate(
+        total_monto=Sum('total')
+    )
+    sales_by_payment = []
+    sales_by_payment_chart = []
+    for item in sales_by_payment_type:
+        monto = item['total_monto'] or 0
+        sales_by_payment.append({
+            'forma_pago': item['forma_pago'],
+            'total_monto': "$" + format_clp(monto)
+        })
+        sales_by_payment_chart.append({
+            'forma_pago': item['forma_pago'],
+            'total_monto': float(monto)
+        })
+    filtro_top = request.GET.get('top', 10)
+    try:
+        filtro_top = int(filtro_top)
+    except ValueError:
+        filtro_top = 10
+    top_selling_products = VentaDetalle.objects.filter(
+        venta__fecha__gte=fecha_inicio, venta__fecha__lte=fecha_fin
+    ).values('producto__nombre').annotate(
+        total_cantidad=Sum('cantidad')
+    ).order_by('-total_cantidad')[:filtro_top]
+    context = {
+        'ingreso_total': "$" + format_clp(ingreso_total),
+        'ingreso_total_sin_iva': "$" + format_clp(ingreso_sin_iva),
+        'iva_total': "$" + format_clp(iva_total_calc),
+        'ganancia_bruta': "$" + format_clp(ganancia_real),
+        'ganancia_liquida': "$" + format_clp(ganancia_real),
+        'margen': format_clp(margen) + "%",
+        'costo_total': "$" + format_clp(cmv),
+        'num_transacciones': num_transacciones,
+        'ticket_promedio': "$" + format_clp(ticket_promedio),
+        'unidades_promedio': format_clp(unidades_promedio),
+        'best_selling_product': best_selling_product,
+        'best_selling_quantity': best_selling_quantity,
+        'sales_by_payment': sales_by_payment,
+        'sales_by_payment_chart': sales_by_payment_chart,
+        'top_selling_products': list(top_selling_products),
+        'fecha_inicio': fecha_inicio_str,
+        'fecha_fin': fecha_fin_str,
+        'filtro_top_actual': filtro_top,
+        'promedio_ganancia_neta': "$" + format_clp(promedio_ganancia_neta),
+        'promedio_porcentaje_ganancia': format_clp(promedio_porcentaje_ganancia) + "%"
+    }
+    return render(request, 'reports/advanced_reports.html', context)

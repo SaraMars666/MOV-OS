@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container">
-    <h1>Gestión de Productos</h1>
+<div class="container content-max mt-4">
+    <h2>Gestión de Productos</h2>
     {% if messages %}
         <div class="messages">
             {% for message in messages %}
@@ -52,37 +52,37 @@
                     <th style="width: 25%;">
                         <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=nombre&order={% if sort_by == 'nombre' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
                             NOMBRE
-                            {% if sort_by == 'nombre' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                            {% if sort_by == 'nombre' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
                         </a>
                     </th>
                     <th>
                         <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=codigo1&order={% if sort_by == 'codigo1' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
                             CÓDIGO 1
-                            {% if sort_by == 'codigo1' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                            {% if sort_by == 'codigo1' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
                         </a>
                     </th>
                     <th>
                         <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=codigo2&order={% if sort_by == 'codigo2' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
                             CÓDIGO 2
-                            {% if sort_by == 'codigo2' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                            {% if sort_by == 'codigo2' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
                         </a>
                     </th>
                     <th>
                         <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=proveedor&order={% if sort_by == 'proveedor' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
                             PROVEEDOR
-                            {% if sort_by == 'proveedor' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                            {% if sort_by == 'proveedor' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
                         </a>
                     </th>
                     <th class="text-end">
                         <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=precio_venta&order={% if sort_by == 'precio_venta' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
                             PRECIO VENTA
-                            {% if sort_by == 'precio_venta' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                            {% if sort_by == 'precio_venta' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
                         </a>
                     </th>
                     <th class="text-center">
                         <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=stock&order={% if sort_by == 'stock' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
                             STOCK
-                            {% if sort_by == 'stock' %}{% if order == 'asc' %}&uarr;{% else %}&darr;{% endif %}{% endif %}
+                            {% if sort_by == 'stock' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
                         </a>
                     </th>
                     <th class="text-center">ACCIONES</th>
@@ -168,7 +168,15 @@
     <a href="{% url 'upload_products' %}" class="btn btn-success">Cargar Productos por Excel</a>
     <a href="{% url 'export_products_to_excel' %}" class="btn btn-info">Exportar a Excel</a>
     <br><br>
-    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Volver</a>
+        {% if request.user.is_superuser %}
+            {% url 'admin_dashboard' as back_href %}
+            {% include 'partials/back_button.html' with href=back_href text='Volver al Dashboard' %}
+        {% endif %}
+    <!-- Enlace a la asignación masiva -->
+    <a href="{% url 'bulk_assign_products' %}" class="btn btn-warning mb-3">Asignar Productos a Sucursal</a>
+    <a href="{% url 'transfer_stock' %}" class="btn btn-outline-primary mb-3 ms-2">Transferir Stock</a>
+    <a href="{% url 'transfer_history' %}" class="btn btn-outline-secondary mb-3 ms-2">Historial Transferencias</a>
+    <a href="{% url 'adjust_history' %}" class="btn btn-outline-secondary mb-3 ms-2">Historial Ajustes</a>
 </div>
 
 <!-- Modal para Detalles del Producto -->

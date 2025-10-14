@@ -3,17 +3,20 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
+<div class="container content-max">
     <h2>Crear Nuevo Usuario</h2>
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
     <form method="POST">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit" class="btn btn-primary">Crear Usuario</button>
     </form>
+    <br>
+  {% url 'user_management' as back_href %}
+  {% include 'partials/back_button.html' with href=back_href text='Volver a Usuarios' %}
 </div>
-<br><br><br>
-<div><a href="{% url 'user_management' %}" class="btn btn-secondary">Volver</a>
 {% endblock %}
-
-
-</div><br>

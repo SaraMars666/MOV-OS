@@ -4,85 +4,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reportes Avanzados - MOV-OS</title>
-  <!-- Fuentes y CSS -->
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <title>Reportes Avanzados - Perspectiva Financiera</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    * {
-      color: #FFF !important;
-    }
-    /* Sobrescribe el color solo para la tabla de productos */
-    table.top-products-table,
-    table.top-products-table th,
-    table.top-products-table td {
-      color: #000 !important;
-    }
-    body {
-      background-color: #000;
-      color: #FFF;
-      font-family: 'Cinzel', serif;
-    }
-    .card, .sidebar-card {
-      background-color: #12161A !important;
-      border: 1px solid #444E5A;
-      margin-bottom: 1rem;
-    }
-    .card-header h4, .sidebar-card h5, .display-6 {
-      color: #FFF !important;
-      text-shadow: 0 0 5px #0099FF;
-    }
-    .card-header p, .small, label, .form-label {
-      color: #CCC;
-    }
-    .list-group-item {
-      background-color: #1F222B !important;
-      color: #FFF;
-      border: 1px solid #444E5A;
-    }
-    /* Filtros: inputs y selects en las secciones de fechas, top productos y gráfica de onda deberán mostrar texto negro */
-    #global-filters input.form-control,
-    #global-filters select.form-select,
-    #topFilterForm input.form-control,
-    #topFilterForm select.form-select,
-    #waveTimeFilterForm input.form-control,
-    #waveTimeFilterForm select.form-select {
-      color: #000 !important;
-    }
-    /* Sobrescribir el color de las opciones en los selects */
-    select.form-select option {
-      color: #000 !important;
-    }
-    /* Scroll para la sección de producto */
-    #product-results {
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    /* Contenedor para el gráfico de onda */
-    #waveChartContainer {
-      position: relative;
-      height: 250px; /* Altura reducida */
-    }
-    /* Sidebar siempre visible */
-    #sidebar {
-      background-color: #1F222B;
-      border-right: 1px solid #444E5A;
-      padding: 1rem;
-    }
-    #sidebar label {
-      color: #FFF;
-      margin-bottom: .5rem;
-    }
-    .toggle-indicator {
-      margin-bottom: .5rem;
-    }
-  </style>
+  <link rel="stylesheet" href="{% static 'css/reports_advanced.css' %}">
 </head>
 <body>
-  <div class="container-fluid py-3">
+  <div class="container-fluid">
     <div class="row">
-      <!-- Sidebar -->
+      <!-- Sidebar con filtros e indicadores para mostrar/ocultar secciones -->
       <aside id="sidebar" class="col-md-3 mb-3">
         <div class="sidebar-card p-3 mb-3">
           <h5>Indicadores</h5>
@@ -95,51 +25,77 @@
             <label class="form-check-label" for="toggleVentas">Detalle de Ventas</label>
           </div>
           <div class="form-check toggle-indicator">
-            <input class="form-check-input" type="checkbox" id="toggleFormaPago" checked>
-            <label class="form-check-label" for="toggleFormaPago">Ventas por Forma de Pago</label>
-          </div>
-          <div class="form-check toggle-indicator">
             <input class="form-check-input" type="checkbox" id="toggleTopProd" checked>
             <label class="form-check-label" for="toggleTopProd">Top Productos</label>
-          </div>
-          <div class="form-check toggle-indicator">
-            <input class="form-check-input" type="checkbox" id="toggleProductoInfo" checked>
-            <label class="form-check-label" for="toggleProductoInfo">Info. de Producto</label>
           </div>
           <div class="form-check toggle-indicator">
             <input class="form-check-input" type="checkbox" id="toggleOnda" checked>
             <label class="form-check-label" for="toggleOnda">Gráfico de Onda</label>
           </div>
+          <div class="form-check toggle-indicator">
+            <input class="form-check-input" type="checkbox" id="toggleRentabilidad" checked>
+            <label class="form-check-label" for="toggleRentabilidad">Rentabilidad de Productos</label>
+          </div>
         </div>
       </aside>
       <!-- Contenido Principal -->
       <main class="col-md-9">
-        <!-- Filtro General -->
+        <!-- Filtro General con campos adicionales -->
         <div class="card mb-3" id="global-filters">
           <div class="card-header">
             <h4>Filtro de Reporte</h4>
+            <p class="small">Perspectiva Financiera: Dominando el Flujo de Caja y la Conciliación. Filtra por fechas, cajero/usuario, sucursal o ve todos para obtener una visión general.</p>
           </div>
           <div class="card-body">
             <form method="get" class="row gy-3 align-items-end">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="fecha_inicio" class="form-label">Fecha de Inicio</label>
                 <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio|default:'' }}">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="fecha_fin" class="form-label">Fecha de Fin</label>
                 <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin|default:'' }}">
               </div>
-              <div class="col-md-4">
-                <button type="submit" class="btn btn-primary w-100">Aplicar Filtros</button>
+              <div class="col-md-3">
+                <label for="cajero" class="form-label">Cajero/Usuario</label>
+                <select name="cajero" id="cajero" class="form-select">
+                  <option value="todos" {% if cajero_actual == "todos" %}selected{% endif %}>Todos</option>
+                  {% for user in usuarios %}
+                  <option value="{{ user.id }}" {% if cajero_actual == user.id|stringformat:"s" %}selected{% endif %}>
+                    {{ user.username }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="sucursal" class="form-label">Sucursal</label>
+                <select name="sucursal" id="sucursal" class="form-select">
+                  <option value="todos" {% if sucursal_actual == "todos" %}selected{% endif %}>Todos</option>
+                  {% for branch in sucursales %}
+                  <option value="{{ branch.id }}" {% if sucursal_actual == branch.id|stringformat:"s" %}selected{% endif %}>
+                    {{ branch.nombre }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-12">
+                <div class="d-flex flex-column flex-lg-row gap-2">
+                  <button type="submit" class="btn btn-primary flex-grow-1">Aplicar Filtros</button>
+                  <div class="btn-group flex-grow-1" role="group" aria-label="Rangos rápidos">
+                    <button type="button" class="btn btn-primary" onclick="setQuickRange('7d')">Últimos 7 días</button>
+                    <button type="button" class="btn btn-primary" onclick="setQuickRange('mes')">Mes actual</button>
+                    <button type="button" class="btn btn-primary" onclick="setQuickRange('tri')">Trimestre</button>
+                  </div>
+                </div>
               </div>
             </form>
           </div>
         </div>
-        <!-- Indicadores Avanzados: Información con IVA -->
+        <!-- Indicadores Avanzados: perspectiva financiera -->
         <div class="card mb-3" id="indicadores-avanzados">
           <div class="card-header">
             <h4>Indicadores Avanzados</h4>
-            <p class="small">Información completa para la toma de decisiones</p>
+            <p class="small">Dominando el Flujo de Caja y la Conciliación</p>
           </div>
           <div class="card-body">
             <div class="row text-center">
@@ -147,43 +103,155 @@
               <div class="col-6 col-md-3 mb-3">
                 <h5>Venta con IVA</h5>
                 <p class="display-6">{{ ingreso_total|default:"0" }}</p>
-                <p class="small">Total recaudado (con IVA)</p>
+                <p class="small">
+                  Total recaudado (con IVA). Representa la suma de todas las ventas realizadas, incluyendo el impuesto.
+                </p>
               </div>
               <!-- Venta sin IVA -->
               <div class="col-6 col-md-3 mb-3">
                 <h5>Venta sin IVA</h5>
                 <p class="display-6">{{ ingreso_total_sin_iva|default:"0" }}</p>
-                <p class="small">Total sin IVA</p>
+                <p class="small">
+                  Total de ventas sin el impuesto. Indica el monto neto de las ventas.
+                </p>
               </div>
               <!-- IVA Recaudado -->
               <div class="col-6 col-md-3 mb-3">
                 <h5>IVA Recaudado</h5>
                 <p class="display-6">{{ iva_total|default:"0" }}</p>
-                <p class="small">Monto de IVA</p>
+                <p class="small">
+                  Importe total del IVA cobrado en las ventas.
+                </p>
               </div>
               <!-- Ganancia Bruta -->
               <div class="col-6 col-md-3 mb-3">
                 <h5>Ganancia Bruta</h5>
                 <p class="display-6">{{ ganancia_bruta|default:"0" }}</p>
-                <p class="small">(Venta sin IVA - Costo)</p>
+                <p class="small">
+                  Diferencia entre la venta sin IVA y el costo total de productos vendidos.
+                </p>
               </div>
-              <!-- Ganancia Líquida -->
+              <!-- Ganancia Neta -->
               <div class="col-6 col-md-3 mb-3">
-                <h5>Ganancia Líquida</h5>
-                <p class="display-6">{{ ganancia_liquida|default:"0" }}</p>
-                <p class="small">Ganancia Bruta menos Gastos</p>
+                <h5>Ganancia Neta</h5>
+                <p class="display-6">{{ ganancia_neta|default:"0" }}</p>
+                <p class="small">
+                  Venta sin IVA menos costo sin IVA (CMV neto).
+                </p>
               </div>
               <!-- Costo Total -->
               <div class="col-6 col-md-3 mb-3">
                 <h5>Costo Total</h5>
                 <p class="display-6">{{ costo_total|default:"0" }}</p>
-                <p class="small">Inversión en Productos</p>
+                <p class="small">
+                  Total invertido en productos, valor del Costo de Mercancía Vendida (CMV).
+                </p>
               </div>
               <!-- Transacciones -->
               <div class="col-6 col-md-3 mb-3">
                 <h5>Transacciones</h5>
                 <p class="display-6">{{ num_transacciones|default:"0" }}</p>
-                <p class="small">Ventas Realizadas</p>
+                <p class="small">
+                  Número total de ventas realizadas en el período.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Comparativo Periodo Anterior -->
+        <div class="card mb-3" id="comparativo-periodo">
+          <div class="card-header">
+            <h4>Comparación con Periodo Anterior <span id="comparativoBadge" class="badge bg-info ms-2 {% if not comparativo_custom %}d-none{% endif %}">Custom</span></h4>
+            <p class="small">
+              {% if comparativo_custom %}
+                Comparando contra rango personalizado ({{ prev_inicio }} a {{ prev_fin }}).
+              {% else %}
+                Evalúa variaciones respecto al periodo inmediatamente anterior ({{ prev_inicio }} a {{ prev_fin }}).
+              {% endif %}
+            </p>
+            <form method="get" id="comparativoCustomForm" class="row g-2 align-items-end mt-2">
+              <input type="hidden" name="fecha_inicio" value="{{ fecha_inicio }}">
+              <input type="hidden" name="fecha_fin" value="{{ fecha_fin }}">
+              <input type="hidden" name="cajero" value="{{ cajero_actual }}">
+              <input type="hidden" name="sucursal" value="{{ sucursal_actual }}">
+              <div class="col-auto">
+                <label for="comparativo_inicio" class="form-label small mb-0">Inicio (comparativo)</label>
+                <input type="date" name="comparativo_inicio" id="comparativo_inicio" class="form-control form-control-sm" value="{{ comparativo_inicio_custom }}">
+              </div>
+              <div class="col-auto">
+                <label for="comparativo_fin" class="form-label small mb-0">Fin (comparativo)</label>
+                <input type="date" name="comparativo_fin" id="comparativo_fin" class="form-control form-control-sm" value="{{ comparativo_fin_custom }}">
+              </div>
+              <div class="col-auto pt-3">
+                <button type="submit" class="btn btn-primary btn-sm mt-1">Aplicar Comparativo</button>
+              </div>
+              <div class="col-auto pt-3">
+                <a href="?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}" class="btn btn-outline-secondary btn-sm mt-1">Reset</a>
+              </div>
+              <div class="col-12 pt-2 d-flex gap-2 flex-wrap" id="comparativoQuickButtons">
+                <button type="button" class="btn btn-outline-primary btn-xs" onclick="quickComparativo('prev')">Periodo anterior</button>
+                <button type="button" class="btn btn-outline-primary btn-xs" onclick="quickComparativo('yago')">Mismo periodo año pasado</button>
+                <button type="button" class="btn btn-outline-primary btn-xs d-none" id="btnYearPrev" onclick="quickComparativo('yearprev')">Año completo anterior</button>
+              </div>
+              <div class="col-12">
+                <div id="comparativoError" class="text-warning small" style="display:none;"></div>
+              </div>
+            </form>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-6 col-md-3 mb-3">
+                <h6>Ingreso Prev.</h6>
+                <p class="mb-1" id="cmp-ingreso-prev">{{ ingreso_prev }}</p>
+                <span class="small" id="cmp-ingreso-delta">Δ {{ ingreso_delta }} ({{ ingreso_pct }})</span>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <h6>Ganancia Neta Prev.</h6>
+                <p class="mb-1" id="cmp-ganancia-prev">{{ ganancia_neta_prev }}</p>
+                <span class="small" id="cmp-ganancia-delta">Δ {{ ganancia_neta_delta }} ({{ ganancia_neta_pct }})</span>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <h6>Transacciones Prev.</h6>
+                <p class="mb-1" id="cmp-transacciones-prev">{{ num_transacciones_prev }}</p>
+                <span class="small" id="cmp-transacciones-delta">Δ {{ transacciones_delta }} ({{ transacciones_pct }})</span>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <h6>Margen Prev.</h6>
+                <p class="mb-1" id="cmp-margen-prev">{{ margen_prev }}</p>
+                <span class="small" id="cmp-margen-delta">Δ {{ margen_delta }} ({{ margen_pct }})</span>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <h6 data-bs-toggle="tooltip" title="% del ingreso actual representado por el ingreso del periodo comparado">% Part. Ingreso</h6>
+                <p class="mb-1" id="cmp-part-ing">{{ participacion_ingreso }}</p>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <h6 data-bs-toggle="tooltip" title="% de la ganancia neta actual representada por la ganancia neta del periodo comparado">% Part. Ganancia</h6>
+                <p class="mb-1" id="cmp-part-gan">{{ participacion_ganancia }}</p>
+              </div>
+            </div>
+            <div id="comparativoLoading" class="text-center" style="display:none;">
+              <div class="spinner-border spinner-border-sm text-accent" role="status"><span class="visually-hidden">Cargando...</span></div>
+              <span class="small ms-2">Actualizando comparativo...</span>
+            </div>
+          </div>
+        </div>
+        <!-- Indicadores de Rentabilidad -->
+        <div class="card mb-3" id="indicadores-rentabilidad">
+          <div class="card-header">
+            <h4>Indicadores de Rentabilidad</h4>
+            <p class="small">Promedio de Ganancia Neta y % de Ganancia en Productos</p>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-md-6 mb-3">
+                <h5>Promedio Ganancia Neta</h5>
+                <p class="display-6" data-promedio-ganancia-neta="{{ promedio_ganancia_neta_raw }}">{{ promedio_ganancia_neta|default:"0" }}</p>
+                <p class="small">(en CLP)</p>
+              </div>
+              <div class="col-md-6 mb-3">
+                <h5>Promedio % de Ganancia</h5>
+                <p class="display-6">{{ promedio_porcentaje_ganancia|default:"0" }}</p>
+                <p class="small">(sobre Venta sin IVA)</p>
               </div>
             </div>
           </div>
@@ -214,16 +282,6 @@
             </div>
           </div>
         </div>
-        <!-- Ventas por Forma de Pago -->
-        <div class="card mb-3" id="forma-pago">
-          <div class="card-header">
-            <h4>Ventas por Forma de Pago</h4>
-            <p class="small">Distribución según método de pago</p>
-          </div>
-          <div class="card-body text-center">
-            <canvas id="chartSalesByPayment" width="800" height="400"></canvas>
-          </div>
-        </div>
         <!-- Top Productos Más Vendidos -->
         <div class="card mb-3" id="top-productos">
           <div class="card-header">
@@ -243,19 +301,22 @@
                   <option value="30" {% if filtro_top_actual == 30 %}selected{% endif %}>30</option>
                 </select>
               </div>
-              <div class="col-6 col-md-3">
-                <button type="submit" class="btn btn-primary w-100">Actualizar</button>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">Actualizar</button>
               </div>
             </form>
             <div class="table-responsive">
-              <table class="table table-striped table-hover top-products-table">
-                <thead class="thead-dark">
+              <table class="table table-dark table-sm mb-0 align-middle">
+                <thead>
                   <tr>
                     <th>Producto</th>
                     <th>Cantidad Vendida</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id="topProductosBody">
+                  <tr id="topProductosLoadingRow" style="display:none;">
+                    <td colspan="2" class="text-center small"><div class="spinner-border spinner-border-sm text-warning" role="status"><span class="visually-hidden">Cargando...</span></div> Cargando...</td>
+                  </tr>
                   {% for product in top_selling_products %}
                   <tr>
                     <td>{{ product.producto__nombre }}</td>
@@ -263,56 +324,14 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="2" class="text-center">No hay datos disponibles.</td>
+                    <td colspan="2" class="text-center small">No hay datos disponibles.</td>
                   </tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
+            <div id="topProductosEmpty" class="text-center small muted mt-2" style="display:none;">Sin datos para el rango seleccionado.</div>
           </div>
-        </div>
-        <!-- Información de Producto -->
-        <div class="card mb-3" id="producto-info">
-          <div class="card-header">
-            <h4>Información de Producto</h4>
-            <p class="small">Busca un producto y obtén datos estadísticos:</p>
-          </div>
-          <div class="card-body">
-            <form method="get" id="productSearchForm" class="row g-3 align-items-end">
-              <div class="col-md-4">
-                <label for="product_search" class="form-label">Buscar Producto</label>
-                <input type="text" id="product_search" name="product_search" class="form-control" placeholder="Nombre, código, etc.">
-              </div>
-              <div class="col-md-3">
-                <label for="prod_fecha_inicio" class="form-label">Fecha de Inicio</label>
-                <input type="date" id="prod_fecha_inicio" name="prod_fecha_inicio" class="form-control">
-              </div>
-              <div class="col-md-3">
-                <label for="prod_fecha_fin" class="form-label">Fecha de Fin</label>
-                <input type="date" id="prod_fecha_fin" name="prod_fecha_fin" class="form-control">
-              </div>
-              <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Buscar</button>
-              </div>
-            </form>
-            <!-- Resultados con scroll -->
-            <div class="mt-4" id="product-results">
-              <table class="table table-dark table-striped">
-                <thead>
-                  <tr>
-                    <th>Mes con Mayor Venta</th>
-                    <th>Cantidad Promedio Vendida</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="max-month">N/A</td>
-                    <td id="avg-quantity">N/A</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="small mt-2">* La información se calculará de forma independiente al filtro general.</p>
           </div>
         </div>
         <!-- Gráfico de Onda: Ganancias vs Tiempo -->
@@ -336,13 +355,113 @@
             </form>
           </div>
           <div class="card-body">
-            <div id="waveChartContainer">
+            <div id="waveChartContainer" style="height:250px; position: relative;">
               <canvas id="waveChart"></canvas>
             </div>
           </div>
         </div>
+        <!-- Serie Diaria -->
+        <div class="card mb-3" id="serie-diaria">
+          <div class="card-header">
+            <h4>Serie Diaria</h4>
+            <p class="small">Muestra cuánto vendiste cada día y la ganancia neta (descontando el costo estimado). Útil para ver tendencias y días fuertes.</p>
+            <a class="btn btn-sm btn-primary mt-2" href="{% url 'reports:export_daily_series_csv' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}" target="_blank">Exportar CSV Serie Diaria</a>
+          </div>
+          <div class="card-body">
+            <div id="dailyEmpty" class="text-center small muted" style="display:none;">Sin datos para el rango seleccionado.</div>
+            <canvas id="chartDaily" height="120"></canvas>
+          </div>
+        </div>
+        <!-- Comparación por Sucursal -->
+        <div class="card mb-3" id="comparacion-sucursal">
+          <div class="card-header">
+            <h4>Comparación por Sucursal</h4>
+            <p class="small">Compara el rendimiento de cada sucursal: ingreso total y ganancia neta aproximada. Esto ayuda a decidir dónde enfocar inventario o promociones.</p>
+            <a class="btn btn-sm btn-primary mt-2" href="{% url 'reports:export_branch_comparison_csv' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}" target="_blank">Exportar CSV Sucursales</a>
+          </div>
+          <div class="card-body">
+            <div id="branchEmpty" class="text-center small muted" style="display:none;">Sin datos por sucursal.</div>
+            <canvas id="chartBranch" height="120"></canvas>
+          </div>
+        </div>
+        <!-- Distribución Horaria -->
+        <div class="card mb-3" id="distribucion-horaria">
+          <div class="card-header">
+            <h4>Distribución Horaria</h4>
+            <p class="small">Horas con mayor actividad (cantidad de ventas e ingreso). Útil para planificar turnos y promociones horarias.</p>
+          </div>
+          <div class="card-body">
+            <div id="hourlyEmpty" class="text-center small muted" style="display:none;">Sin ventas para construir distribución.</div>
+            <canvas id="chartHourly" height="120"></canvas>
+          </div>
+        </div>
+        <!-- Rentabilidad de Productos -->
+        <div class="card mb-3" id="rentabilidad-productos">
+          <div class="card-header">
+            <h4>Rentabilidad de Productos (Top 50)</h4>
+            <p class="small">Producto más rentable = mayor ganancia neta (venta sin IVA - costo sin IVA) multiplicada por cantidad. Identifica tus verdaderos motores de margen.</p>
+            <a class="btn btn-sm btn-primary mt-2" href="{% url 'reports:export_rentabilidad_csv' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" target="_blank">Exportar CSV Rentabilidad</a>
+          </div>
+          <div class="card-body table-responsive">
+            <table class="table table-dark table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cant</th>
+                  <th>Ingreso Neto</th>
+                  <th>Costo Neto</th>
+                  <th>Ganancia Neta</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in rentabilidad_productos %}
+                <tr>
+                  <td>{{ r.producto }}</td>
+                  <td>{{ r.cantidad }}</td>
+                  <td>{{ r.ingreso_neto_total|floatformat:0 }}</td>
+                  <td>{{ r.costo_neto_total|floatformat:0 }}</td>
+                  <td>{{ r.ganancia_neta_total|floatformat:0 }}</td>
+                  <td>{{ r.porcentaje_ganancia|floatformat:2 }}%</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Ranking de Cajeros -->
+        <div class="card mb-3" id="ranking-cajeros">
+          <div class="card-header">
+            <h4>Ranking de Cajeros</h4>
+            <p class="small">Evalúa desempeño por usuario: total vendido y ticket promedio (promedio CLP por transacción). Útil para coaching y reconocimiento.</p>
+            <a class="btn btn-sm btn-primary mt-2" href="{% url 'reports:export_ranking_cajeros_csv' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" target="_blank">Exportar CSV Ranking</a>
+          </div>
+          <div class="card-body table-responsive">
+            <table class="table table-dark table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Ventas</th>
+                  <th>Ingreso Total</th>
+                  <th>Ticket Promedio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in ranking_cajeros %}
+                <tr>
+                  <td>{{ c.usuario }}</td>
+                  <td>{{ c.ventas_count }}</td>
+                  <td>{{ c.ingreso_total|floatformat:0 }}</td>
+                  <td>{{ c.ticket_promedio|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Botón para volver al Dashboard de Reportes -->
         <div class="text-center my-4">
-          <a href="{% url 'report_dashboard' %}" class="btn btn-secondary">Volver al Dashboard de Reportes</a>
+          <a href="{% url 'reports:report_dashboard' %}" class="btn-back">Volver a Reportes</a>
         </div>
       </main>
     </div>
@@ -350,67 +469,60 @@
   <!-- Scripts: Bootstrap y Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script id="waveDataJSON" type="application/json">{"labels": [{% for l in wave_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}], "gains": [{% for g in wave_gains %}{{ g }}{% if not forloop.last %},{% endif %}{% endfor %}]}</script>
+  {{ daily_chart|json_script:"dailyData" }}
+  {{ branch_comparison|json_script:"branchData" }}
+  {{ hourly_distribution|json_script:"hourlyData" }}
+  {{ heatmap_matrix|json_script:"heatmapData" }}
   <script>
-    // Toggle de indicadores
+    // Selector de rangos rápidos
+    function formatDate(d){ return d.toISOString().slice(0,10); }
+    function setQuickRange(mode){
+      const hoy = new Date();
+      let inicio;
+      if(mode==='7d'){
+        inicio = new Date(hoy.getTime() - 6*24*3600*1000); // incluye hoy
+      } else if(mode==='mes') {
+        inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      } else if(mode==='tri') {
+        const m = hoy.getMonth();
+        const triStartMonth = m - (m % 3); // 0,3,6,9
+        inicio = new Date(hoy.getFullYear(), triStartMonth, 1);
+      } else {
+        inicio = new Date(hoy.getTime() - 29*24*3600*1000);
+      }
+      document.getElementById('fecha_inicio').value = formatDate(inicio);
+      document.getElementById('fecha_fin').value = formatDate(hoy);
+      // Enviar formulario
+      document.querySelector('#global-filters form').requestSubmit();
+    }
+    // Toggle de secciones mediante checkboxes
     document.getElementById('toggleKPI').addEventListener('change', function() {
-      document.getElementById('kpis-general').style.display = this.checked ? 'block' : 'none';
+      document.getElementById('indicadores-avanzados').style.display = this.checked ? 'block' : 'none';
     });
     document.getElementById('toggleVentas').addEventListener('change', function() {
       document.getElementById('detalle-ventas').style.display = this.checked ? 'block' : 'none';
     });
-    document.getElementById('toggleFormaPago').addEventListener('change', function() {
-      document.getElementById('forma-pago').style.display = this.checked ? 'block' : 'none';
-    });
     document.getElementById('toggleTopProd').addEventListener('change', function() {
       document.getElementById('top-productos').style.display = this.checked ? 'block' : 'none';
-    });
-    document.getElementById('toggleProductoInfo').addEventListener('change', function() {
-      document.getElementById('producto-info').style.display = this.checked ? 'block' : 'none';
     });
     document.getElementById('toggleOnda').addEventListener('change', function() {
       document.getElementById('grafico-onda').style.display = this.checked ? 'block' : 'none';
     });
-    
-    // Gráfico de Barras: Ventas por Forma de Pago
-    const ctxPayment = document.getElementById('chartSalesByPayment').getContext('2d');
-    const paymentLabels = [{% for item in sales_by_payment_chart %}"{{ item.forma_pago }}",{% endfor %}];
-    const paymentData = [{% for item in sales_by_payment_chart %}{{ item.total_monto }},{% endfor %}];
-    new Chart(ctxPayment, {
-      type: 'bar',
-      data: {
-        labels: paymentLabels,
-        datasets: [{
-          label: 'Ventas por Forma de Pago',
-          data: paymentData,
-          backgroundColor: [
-            'rgba(0,208,255,0.7)',
-            'rgba(75,192,192,0.7)',
-            'rgba(255,206,86,0.7)',
-            'rgba(255,99,132,0.7)'
-          ],
-          borderColor: [
-            'rgba(0,208,255,1)',
-            'rgba(75,192,192,1)',
-            'rgba(255,206,86,1)',
-            'rgba(255,99,132,1)'
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        plugins: { legend: { position: 'top' } },
-        scales: {
-          x: { beginAtZero: true, ticks: { color: '#FFF' } },
-          y: { ticks: { color: '#FFF' } }
-        }
-      }
+    document.getElementById('toggleRentabilidad').addEventListener('change', function() {
+      document.getElementById('indicadores-rentabilidad').style.display = this.checked ? 'block' : 'none';
     });
+    
     
     // Gráfico de Onda: Ganancias vs Tiempo
     const ctxWave = document.getElementById('waveChart').getContext('2d');
-    const waveLabels = {% if wave_labels %}[{% for label in wave_labels %}"{{ label }}",{% endfor %}]{% else %}["Enero","Febrero","Marzo","Abril","Mayo","Junio"]{% endif %};
-    const waveGains = {% if wave_gains %}[{% for data in wave_gains %}{{ data }},{% endfor %}]{% else %}[1500000,2000000,1800000,2200000,2100000,2500000]{% endif %};
+    let waveLabels = [];
+    let waveGains = [];
+    try {
+      const waveParsed = JSON.parse(document.getElementById('waveDataJSON').textContent);
+      waveLabels = waveParsed.labels;
+      waveGains = waveParsed.gains;
+    } catch(e){ console.warn('Wave data JSON parse error', e); }
     new Chart(ctxWave, {
       type: 'line',
       data: {
@@ -433,12 +545,291 @@
       }
     });
     
-    // Filtro de periodo para gráfico de onda (ejemplo)
-    document.getElementById('waveTimeFilterForm').addEventListener('submit', function(e) {
+    document.getElementById('waveTimeFilterForm').addEventListener('submit', function(e){
       e.preventDefault();
       const selectedUnit = document.getElementById('timeUnit').value;
       alert('Filtro de tiempo actualizado: ' + selectedUnit);
-      // Implementa actualización vía AJAX o recarga con parámetros según necesites.
+      // Aquí podrías implementar la actualización vía AJAX o recargar la página con los parámetros correspondientes.
+    });
+  </script>
+  <script>
+    // Render inicial con datos embebidos si existen
+    document.addEventListener('DOMContentLoaded', () => {
+      function safeParse(id){ const el = document.getElementById(id); if(!el) return []; try { return JSON.parse(el.textContent); } catch(e){ console.warn('Parse fail', id, e); return []; } }
+      const dailyInit = safeParse('dailyData'); if(dailyInit.length) updateDailyChart(dailyInit); else document.getElementById('dailyEmpty').style.display='block';
+      const branchInit = safeParse('branchData'); if(branchInit.length) updateBranchChart(branchInit); else document.getElementById('branchEmpty').style.display='block';
+      const hourlyInit = safeParse('hourlyData'); if(hourlyInit.length) updateHourlyChart(hourlyInit); else document.getElementById('hourlyEmpty').style.display='block';
+      const heatmapInit = safeParse('heatmapData'); if(heatmapInit.length) renderHeatmap(heatmapInit);
+    });
+    // AJAX recarga de datasets principales
+    async function reloadAdvancedData() {
+      const params = new URLSearchParams({
+        fecha_inicio: document.getElementById('fecha_inicio').value || '',
+        fecha_fin: document.getElementById('fecha_fin').value || '',
+        cajero: document.getElementById('cajero').value || 'todos',
+        sucursal: document.getElementById('sucursal').value || 'todos'
+      });
+      try {
+        const resp = await fetch(`/reports/advanced/data/?${params.toString()}`, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+        if(!resp.ok) return console.warn('Error recargando data', resp.status);
+        const data = await resp.json();
+        if(data.daily_chart){ updateDailyChart(data.daily_chart); }
+        if(data.branch_comparison){ updateBranchChart(data.branch_comparison); }
+        if(data.hourly_distribution){ updateHourlyChart(data.hourly_distribution); }
+        if(data.heatmap_matrix){ renderHeatmap(data.heatmap_matrix); }
+        if(data.rentabilidad_productos){ populateRentabilidad(data.rentabilidad_productos); }
+      } catch(e){ console.error(e); }
+    }
+    // Reutilizar contexto inicial para instanciar y luego mutar
+    let dailyChartRef, branchChartRef, hourlyChartRef;
+    function updateDailyChart(dataset){
+      const labels = dataset.map(d=>d.day);
+      const ingreso = dataset.map(d=>d.ingreso);
+      const ganancia = dataset.map(d=>d.ganancia_neta);
+      document.getElementById('dailyEmpty').style.display = dataset.length ? 'none':'block';
+      if(!dailyChartRef){
+        dailyChartRef = new Chart(document.getElementById('chartDaily'), {
+          type:'line', data:{labels, datasets:[
+            {label:'Ingreso', data: ingreso, borderColor:'#F4C10F', backgroundColor:'rgba(244,193,15,0.1)', tension:.2},
+            {label:'Ganancia Neta', data: ganancia, borderColor:'#2ecc71', backgroundColor:'rgba(46,204,113,0.1)', tension:.2}
+          ]}, options:{responsive:true}
+        });
+      } else {
+        dailyChartRef.data.labels = labels;
+        dailyChartRef.data.datasets[0].data = ingreso;
+        dailyChartRef.data.datasets[1].data = ganancia;
+        dailyChartRef.update();
+      }
+    }
+    function updateBranchChart(dataset){
+      const labels = dataset.map(b=>b.sucursal);
+      const ingreso = dataset.map(b=>b.ingreso);
+      const ganancia = dataset.map(b=>b.ganancia_neta);
+      document.getElementById('branchEmpty').style.display = dataset.length ? 'none':'block';
+      if(!branchChartRef){
+        branchChartRef = new Chart(document.getElementById('chartBranch'), {
+          type:'bar', data:{labels, datasets:[
+            {label:'Ingreso', data: ingreso, backgroundColor:'rgba(244,193,15,0.6)'},
+            {label:'Ganancia Neta', data: ganancia, backgroundColor:'rgba(46,204,113,0.6)'}
+          ]}, options:{responsive:true}
+        });
+      } else {
+        branchChartRef.data.labels = labels;
+        branchChartRef.data.datasets[0].data = ingreso;
+        branchChartRef.data.datasets[1].data = ganancia;
+        branchChartRef.update();
+      }
+    }
+    function updateHourlyChart(dataset){
+      const labels = dataset.map(h=>h.hora);
+      const ventas = dataset.map(h=>h.ventas);
+      const ingreso = dataset.map(h=>h.ingreso);
+      document.getElementById('hourlyEmpty').style.display = dataset.length ? 'none':'block';
+      if(!hourlyChartRef){
+        hourlyChartRef = new Chart(document.getElementById('chartHourly'), {
+          type:'bar', data:{labels, datasets:[
+            {label:'Ventas', data: ventas, backgroundColor:'rgba(52,152,219,0.6)'},
+            {label:'Ingreso', data: ingreso, backgroundColor:'rgba(244,193,15,0.4)'}
+          ]}, options:{responsive:true}
+        });
+      } else {
+        hourlyChartRef.data.labels = labels;
+        hourlyChartRef.data.datasets[0].data = ventas;
+        hourlyChartRef.data.datasets[1].data = ingreso;
+        hourlyChartRef.update();
+      }
+    }
+    function renderHeatmap(matrix){
+      const containerId = 'heatmapContainer';
+      let c = document.getElementById(containerId);
+      if(!c){
+        c = document.createElement('div'); c.id=containerId; c.className='mt-3';
+        const ref = document.getElementById('distribucion-horaria');
+        ref.appendChild(c);
+      }
+      const days = ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];
+      let html = '<table class="table table-sm table-dark heatmap"><thead><tr><th>Hora</th>' + days.map(d=>`<th>${d}</th>`).join('') + '</tr></thead><tbody>';
+      for(let h=0; h<24; h++){
+        html += `<tr><td>${h}</td>`;
+        for(let d=0; d<7; d++){
+          const cell = matrix[d][h];
+          const intensidad = cell.ventas;
+          const bg = intensidad===0?'#222':`rgba(244,193,15,${Math.min(0.8, 0.2 + intensidad/10)})`;
+          html += `<td style="background:${bg}" title="Ventas:${cell.ventas} Ingreso:${cell.ingreso.toFixed(0)}">${cell.ventas}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      c.innerHTML = html;
+    }
+    function populateRentabilidad(rows){
+      const body = document.getElementById('rentabilidadBody');
+      if(!body) return;
+      if(!rows.length){ body.innerHTML = '<tr><td colspan="6" class="text-center">Sin datos</td></tr>'; return; }
+      body.innerHTML = rows.map(r => `<tr><td>${r.producto}</td><td>${r.cantidad}</td><td>${Math.round(r.ingreso_neto_total)}</td><td>${Math.round(r.costo_neto_total)}</td><td>${Math.round(r.ganancia_neta_total)}</td><td>${r.porcentaje_ganancia.toFixed(2)}%</td></tr>`).join('');
+    }
+    // Lazy load rentabilidad al cargar la página inicial (usar datos del endpoint completo)
+    document.addEventListener('DOMContentLoaded', reloadAdvancedData);
+    // Disparar AJAX al enviar filtros
+    document.addEventListener('DOMContentLoaded', () => {
+      const gf = document.querySelector('#global-filters form');
+      if(gf){
+        gf.addEventListener('submit', function(e){
+          e.preventDefault();
+          reloadAdvancedData();
+          this.submit();
+        });
+      }
+      const compForm = document.getElementById('comparativoCustomForm');
+      if(compForm){
+        compForm.addEventListener('submit', function(e){
+          e.preventDefault();
+          const ini = document.getElementById('comparativo_inicio').value;
+          const fin = document.getElementById('comparativo_fin').value;
+          const errBox = document.getElementById('comparativoError');
+          if(errBox){ errBox.style.display='none'; }
+          if(ini && fin && ini>fin){
+            if(errBox){ errBox.textContent='El inicio no puede ser mayor que el fin.'; errBox.style.display='block'; }
+            return;
+          }
+          reloadComparativo();
+        });
+        // Restaurar último rango guardado
+        try {
+          const saved = JSON.parse(localStorage.getItem('comparativoRange') || 'null');
+          if(saved && saved.inicio && saved.fin){
+            document.getElementById('comparativo_inicio').value = saved.inicio;
+            document.getElementById('comparativo_fin').value = saved.fin;
+          }
+        } catch(_e){}
+        // Mostrar u ocultar botón año completo anterior según duración rango principal (>= 365 días)
+        toggleYearPrevButton();
+      }
+      // Inicializar tooltips Bootstrap
+      if(window.bootstrap){
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el=> new bootstrap.Tooltip(el));
+      }
+    });
+    async function reloadComparativo(){
+      const params = new URLSearchParams({
+        fecha_inicio: document.getElementById('fecha_inicio').value || '',
+        fecha_fin: document.getElementById('fecha_fin').value || '',
+        cajero: document.getElementById('cajero').value || 'todos',
+        sucursal: document.getElementById('sucursal').value || 'todos'
+      });
+      const ci = document.getElementById('comparativo_inicio').value;
+      const cf = document.getElementById('comparativo_fin').value;
+      if(ci && cf){ params.append('comparativo_inicio', ci); params.append('comparativo_fin', cf); }
+      try {
+        const spinner = document.getElementById('comparativoLoading'); if(spinner) spinner.style.display='block';
+        const resp = await fetch(`/reports/advanced/data/?${params.toString()}`, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+        if(!resp.ok) return;
+        const data = await resp.json();
+        const meta = data.comparativo_meta || {}; 
+        const headerP = document.querySelector('#comparativo-periodo .card-header p.small');
+        if(headerP){
+          if(meta.comparativo_custom){
+        // Badge toggle
+        const badge = document.getElementById('comparativoBadge');
+        if(badge){ badge.classList.toggle('d-none', !meta.comparativo_custom); }
+            headerP.textContent = `Comparando contra rango personalizado (${meta.comparativo_inicio} a ${meta.comparativo_fin}).`;
+          } else {
+            headerP.textContent = `Evalúa variaciones respecto al periodo inmediatamente anterior (${meta.comparativo_inicio} a ${meta.comparativo_fin}).`;
+          }
+        }
+        function setText(sel, val){ const el=document.querySelector(sel); if(el&&val!==undefined){ el.textContent=val; } }
+        function fmtCLP(n){ if(n==null) return '$0'; return '$'+new Intl.NumberFormat('es-CL').format(n); }
+        if(meta.ingreso_prev!==undefined){ setText('#cmp-ingreso-prev', fmtCLP(meta.ingreso_prev)); }
+        if(meta.ganancia_neta_prev!==undefined){ setText('#cmp-ganancia-prev', fmtCLP(meta.ganancia_neta_prev)); }
+        if(meta.num_transacciones_prev!==undefined){ setText('#cmp-transacciones-prev', meta.num_transacciones_prev); }
+        if(meta.margen_prev!==undefined){ setText('#cmp-margen-prev', (meta.margen_prev||0)+'%'); }
+        // Deltas
+        if(meta.ingreso_delta!==undefined){ setText('#cmp-ingreso-delta', `Δ ${fmtCLP(meta.ingreso_delta)} (${(meta.ingreso_pct||0)}%)`); }
+        if(meta.ganancia_neta_delta!==undefined){ setText('#cmp-ganancia-delta', `Δ ${fmtCLP(meta.ganancia_neta_delta)} (${(meta.ganancia_neta_pct||0)}%)`); }
+        if(meta.transacciones_delta!==undefined){ setText('#cmp-transacciones-delta', `Δ ${meta.transacciones_delta} (${(meta.transacciones_pct||0)}%)`); }
+        if(meta.margen_delta!==undefined){ setText('#cmp-margen-delta', `Δ ${(meta.margen_delta||0)} (${(meta.margen_pct||0)}%)`); }
+  if(meta.participacion_ingreso!==undefined){ setText('#cmp-part-ing', (meta.participacion_ingreso||0).toFixed(2)+'%'); }
+  if(meta.participacion_ganancia!==undefined){ setText('#cmp-part-gan', (meta.participacion_ganancia||0).toFixed(2)+'%'); }
+      } catch(e){ console.warn('Error comparativo AJAX', e); }
+      finally{ const spinner = document.getElementById('comparativoLoading'); if(spinner) spinner.style.display='none'; }
+    }
+    function quickComparativo(mode){
+      const fi = document.getElementById('fecha_inicio').value;
+      const ff = document.getElementById('fecha_fin').value;
+      if(!fi || !ff) return;
+      const dFi = new Date(fi+'T00:00:00');
+      const dFf = new Date(ff+'T00:00:00');
+      const diffDays = Math.round((dFf - dFi)/86400000)+1;
+      let cStart, cEnd;
+      if(mode==='prev'){
+        cEnd = new Date(dFi.getTime()-86400000);
+        cStart = new Date(cEnd.getTime() - (diffDays-1)*86400000);
+      } else if(mode==='yago') {
+        cStart = new Date(dFi); cStart.setFullYear(cStart.getFullYear()-1);
+        cEnd = new Date(dFf); cEnd.setFullYear(cEnd.getFullYear()-1);
+      } else if(mode==='yearprev') {
+        // Año completo anterior respecto al rango principal si cubre >= 365 días
+        cEnd = new Date(dFi.getFullYear()-1, 11, 31);
+        cStart = new Date(dFi.getFullYear()-1, 0, 1);
+      }
+      function fmt(d){ return d.toISOString().slice(0,10); }
+      document.getElementById('comparativo_inicio').value = fmt(cStart);
+      document.getElementById('comparativo_fin').value = fmt(cEnd);
+      // Persistencia
+      try { localStorage.setItem('comparativoRange', JSON.stringify({inicio: fmt(cStart), fin: fmt(cEnd)})); } catch(_e){}
+      reloadComparativo();
+    }
+    function toggleYearPrevButton(){
+      const btn = document.getElementById('btnYearPrev');
+      if(!btn) return;
+      const fi = document.getElementById('fecha_inicio').value;
+      const ff = document.getElementById('fecha_fin').value;
+      if(!fi || !ff){ btn.classList.add('d-none'); return; }
+      const dFi = new Date(fi+'T00:00:00');
+      const dFf = new Date(ff+'T00:00:00');
+      const diffDays = Math.round((dFf - dFi)/86400000)+1;
+      if(diffDays >= 365){ btn.classList.remove('d-none'); } else { btn.classList.add('d-none'); }
+    }
+    // --- Top Productos AJAX ---
+    document.addEventListener('DOMContentLoaded', () => {
+      const topForm = document.getElementById('topFilterForm');
+      const topSelect = document.getElementById('top');
+      if(topForm && topSelect){
+        function fetchTop(){
+          const body = document.getElementById('topProductosBody');
+          const loadingRow = document.getElementById('topProductosLoadingRow');
+          if(loadingRow) loadingRow.style.display='table-row';
+          // Construir params reutilizando filtros globales
+          const params = new URLSearchParams({
+            fecha_inicio: document.getElementById('fecha_inicio').value || '',
+            fecha_fin: document.getElementById('fecha_fin').value || '',
+            cajero: document.getElementById('cajero').value || 'todos',
+            sucursal: document.getElementById('sucursal').value || 'todos',
+            top: topSelect.value || '10'
+          });
+          fetch(`/reports/advanced/data/?${params.toString()}`, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r=> r.ok ? r.json(): Promise.reject(r.status))
+            .then(data => {
+              if(!data.top_selling_products){ return; }
+              // Limpiar excepto fila loading
+              body.querySelectorAll('tr').forEach(tr=>{ if(tr.id!=='topProductosLoadingRow'){ tr.remove(); }});
+              if(!data.top_selling_products.length){
+                const tr = document.createElement('tr'); tr.innerHTML = '<td colspan="2" class="text-center small">Sin datos para el rango seleccionado.</td>';
+                body.appendChild(tr);
+              } else {
+                data.top_selling_products.forEach(p => {
+                  const tr = document.createElement('tr');
+                  tr.innerHTML = `<td>${p.producto__nombre}</td><td>${p.total_cantidad}</td>`;
+                  body.appendChild(tr);
+                });
+              }
+            })
+            .catch(err => { console.warn('Top productos fetch error', err); })
+            .finally(()=>{ if(loadingRow) loadingRow.style.display='none'; });
+        }
+        topForm.addEventListener('submit', e=>{ e.preventDefault(); fetchTop(); });
+        topSelect.addEventListener('change', e=>{ fetchTop(); });
+      }
     });
   </script>
 </body>

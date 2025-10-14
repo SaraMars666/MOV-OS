@@ -1,18 +1,20 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
+<div class="container content-max">
     <h2>Editar Usuario: {{ user.username }}</h2>
-    <form method="post">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    <form method="POST">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit" class="btn btn-primary">Guardar Cambios</button>
     </form>
-    
-    <br><br><br>
-    <div><a href="{% url 'user_management' %}" class="btn btn-secondary">Volver</a>
-</div><br>
-
-
+    <br>
+  {% url 'user_management' as back_href %}
+  {% include 'partials/back_button.html' with href=back_href text='Volver a Usuarios' %}
 </div>
 {% endblock %}

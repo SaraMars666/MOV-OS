@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <h2>Editar Sucursal: {{ sucursal.nombre }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+    </form>
+    <br>
+    <a href="{% url 'sucursales:sucursal_list' %}" class="btn btn-secondary">Volver a la lista</a>
+</div>
+{% endblock %}

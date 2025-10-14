@@ -1,16 +1,12 @@
 {% extends 'base.html' %}
-
 {% block content %}
-<div class="container">
+<div class="container mt-4">
     <h2>{{ title }}</h2>
-
     <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; width: 350px;"></div>
-
     <form method="post">
         {% csrf_token %}
-
         {% for field in form %}
-        <div class="form-group">
+        <div class="mb-3">
             {{ field.label_tag }}
             {{ field }}
             {% if field.errors %}
@@ -18,12 +14,75 @@
             {% endif %}
         </div>
         {% endfor %}
-
         <button type="submit" name="save_only" class="btn btn-success">Guardar</button>
         <button type="submit" name="save_and_list" class="btn btn-primary">Guardar y Volver a la Lista</button>
         <a href="{% url 'product_management' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
+
+{% if product and stocks_sucursal %}
+<div class="container mt-3">
+    <div class="card">
+        <div class="card-header">Stock por sucursal</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-0">
+                                        <thead>
+                                                <tr><th>Sucursal</th><th class="text-end">Stock</th><th class="text-end">Acción</th></tr>
+                                        </thead>
+                                        <tbody>
+                                                {% for s in stocks_sucursal %}
+                                                        <tr data-sucursal-id="{{ s.sucursal.id }}">
+                                                                <td>{{ s.sucursal.nombre }}</td>
+                                                                <td class="text-end"><span class="stock-val">{{ s.cantidad }}</span></td>
+                                                                <td class="text-end">
+                                                                        <button type="button" class="btn btn-sm btn-outline-primary btn-ajustar" data-sucursal-id="{{ s.sucursal.id }}" data-sucursal-nombre="{{ s.sucursal.nombre }}">Ajustar</button>
+                                                                </td>
+                                                        </tr>
+                                                {% endfor %}
+                                        </tbody>
+                                </table>
+            </div>
+            <div class="p-2 small text-muted">Este cuadro resume el stock distribuido por sucursal para este producto.</div>
+        </div>
+    </div>
+</div>
+<!-- Modal de ajuste de stock -->
+<div class="modal fade" id="ajusteStockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajustar stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="ajusteStockForm">
+                    <input type="hidden" name="producto_id" value="{{ product.id }}">
+                    <input type="hidden" name="sucursal_id" id="ajusteSucursalId" value="">
+                    <div class="mb-3">
+                        <label class="form-label">Sucursal</label>
+                        <input type="text" class="form-control" id="ajusteSucursalNombre" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Variación</label>
+                        <input type="number" class="form-control" name="delta" id="ajusteDelta" value="0">
+                        <div class="form-text">Usa valores positivos para ingresar stock y negativos para descontar.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo (opcional)</label>
+                        <input type="text" class="form-control" name="motivo" id="ajusteMotivo" placeholder="Ej: Ajuste inventario">
+                    </div>
+                </form>
+                <div class="alert alert-warning d-none" id="ajusteWarning"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarAjuste">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
@@ -31,15 +90,63 @@
 document.addEventListener("DOMContentLoaded", () => {
     const numericInputs = document.querySelectorAll('input[type="number"]');
     numericInputs.forEach(input => {
-        // Evitar ingreso de caracteres no numéricos y valores negativos
         input.addEventListener('input', () => {
-            // Elimina todo salvo dígitos
             input.value = input.value.replace(/[^0-9]/g, '');
-            // Forzar 0 si se ingresa un valor negativo (aunque con type="number" y min=0 esto no debería pasar)
             if (parseInt(input.value) < 0) {
                 input.value = 0;
             }
         });
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modalEl = document.getElementById('ajusteStockModal');
+    if (!modalEl) return;
+    const modal = new bootstrap.Modal(modalEl);
+    const ajusteForm = document.getElementById('ajusteStockForm');
+    const btnGuardar = document.getElementById('btnGuardarAjuste');
+    const warning = document.getElementById('ajusteWarning');
+    function getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"], meta[name="csrfmiddlewaretoken"], input[name="csrfmiddlewaretoken"]');
+        if (meta && (meta.content || meta.value)) return meta.content || meta.value;
+        const cookies = document.cookie ? document.cookie.split(';') : [];
+        let lastToken = null;
+        for (const part of cookies) {
+            const [rawName, ...rest] = part.trim().split('=');
+            if (rawName === 'csrftoken') lastToken = decodeURIComponent(rest.join('='));
+        }
+        return lastToken || '';
+    }
+    document.querySelectorAll('.btn-ajustar').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('ajusteSucursalId').value = btn.dataset.sucursalId;
+            document.getElementById('ajusteSucursalNombre').value = btn.dataset.sucursalNombre;
+            document.getElementById('ajusteDelta').value = 0;
+            document.getElementById('ajusteMotivo').value = '';
+            warning.classList.add('d-none');
+            modal.show();
+        });
+    });
+    btnGuardar.addEventListener('click', async () => {
+        const formData = new FormData(ajusteForm);
+        try {
+            const res = await fetch('{% url "ajustar_stock" %}', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-CSRFToken': getCSRFToken() },
+                body: formData
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || 'Error al ajustar stock');
+            const sucId = formData.get('sucursal_id');
+            const row = document.querySelector(`tr[data-sucursal-id="${sucId}"]`);
+            if (row) row.querySelector('.stock-val').textContent = data.nueva_cantidad;
+            modal.hide();
+        } catch (e) {
+            warning.textContent = e.message;
+            warning.classList.remove('d-none');
+        }
     });
 });
 </script>

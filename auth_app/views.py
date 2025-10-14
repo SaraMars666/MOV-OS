@@ -18,7 +18,6 @@ def login_view(request):
             return render(request, 'auth_app/login.html', {'error': 'Credenciales incorrectas'})
     return render(request, 'auth_app/login.html')
 
-@login_required
-def logout_view(request):
+def custom_logout(request):
     logout(request)
     return redirect('login')

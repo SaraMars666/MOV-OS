@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
+<div class="container content-max">
     <h2>Cargar Productos por Excel</h2>
     <p>Sube un archivo Excel para agregar o actualizar productos. Si un producto ya existe, será actualizado.</p>
     <br>
@@ -19,6 +19,9 @@
         <button type="submit" class="btn btn-success mt-3">Subir Archivo</button>
     </form>
     <br>
-    <a href="{% url 'product_management' %}" class="btn btn-secondary">Volver</a>
+        {% if request.user.is_superuser %}
+            {% url 'product_management' as back_href %}
+            {% include 'partials/back_button.html' with href=back_href text='Volver a Productos' %}
+        {% endif %}
 </div>
 {% endblock %}

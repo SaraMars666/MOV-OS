@@ -207,3 +207,11 @@ footer {
     margin-top: 20px;
     justify-content: center;
 }
+
+/* Ancho máximo para mejorar lectura en vistas no-POS */
+.content-max {
+    width: 100%;
+    max-width: 1280px; /* Ajustable según preferencia */
+    margin-left: auto;
+    margin-right: auto;
+}

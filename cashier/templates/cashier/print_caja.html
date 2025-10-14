@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Caja #{{ caja.id }}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    body { width: 76mm; margin: 0 auto; font-family: "Courier New", Courier, monospace; font-size: 12px; color: #000; }
+    .wrap { padding: 6px 6px 12px; }
+    .center { text-align: center; }
+    .bold { font-weight: 700; }
+    .small { font-size: 11px; }
+    .line { border-top: 1px dashed #000; margin: 6px 0; }
+    .kv { display: flex; justify-content: space-between; gap: 8px; }
+    .mt { margin-top: 6px; }
+    .mb { margin-bottom: 6px; }
+  </style>
+  <script>
+    window.addEventListener('load', function(){
+      window.print();
+      setTimeout(() => { try { window.close(); } catch(e){} }, 500);
+    });
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="center bold">MOVOS</div>
+    <div class="center small">Reporte de Caja #{{ caja.id }}</div>
+    <div class="center small">{{ caja.apertura|date:"d/m/Y H:i" }}{% if caja.cierre %} - {{ caja.cierre|date:"d/m/Y H:i" }}{% endif %}</div>
+    <div class="line"></div>
+    <div class="small">Cajero: {{ caja.vendedor.username }}</div>
+    <div class="small">Sucursal: {{ caja.sucursal.nombre }}</div>
+    <div class="line"></div>
+    <div class="kv"><span>Efectivo inicial</span><span>{{ formatted_efectivo_inicial }}</span></div>
+    <div class="kv"><span>Ventas débito</span><span>{{ formatted_total_debito }}</span></div>
+    <div class="kv"><span>Ventas crédito</span><span>{{ formatted_total_credito }}</span></div>
+    <div class="kv"><span>Ventas transf.</span><span>{{ formatted_total_transferencia }}</span></div>
+    <div class="kv"><span>Ventas efectivo</span><span>{{ formatted_total_efectivo }}</span></div>
+    <div class="kv"><span>Vuelto entregado</span><span>{{ formatted_vuelto_entregado }}</span></div>
+    <div class="kv"><span>Ventas totales</span><span>{{ formatted_total_ventas }}</span></div>
+    <div class="kv"><span>Efectivo final</span><span>{{ formatted_efectivo_final }}</span></div>
+    <div class="line"></div>
+    <div class="center small">Fin del reporte</div>
+  </div>
+</body>
+</html>

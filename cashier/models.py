@@ -1,14 +1,22 @@
 #cashier/models.py
-from django.conf import settings  # Asegúrate de importar settings
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
+from django.utils import timezone
 from products.models import Product
+from sucursales.models import Sucursal
 from django.contrib.auth import get_user_model
 
+User = get_user_model()
+
+# Modelo de Venta
 class Venta(models.Model):
     empleado = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sucursal = models.ForeignKey(Sucursal, on_delete=models.CASCADE, related_name='ventas', blank=True, null=True)
+    caja = models.ForeignKey('AperturaCierreCaja', on_delete=models.SET_NULL, related_name='ventas', blank=True, null=True)
     fecha = models.DateTimeField(auto_now_add=True)
     total = models.DecimalField(max_digits=10, decimal_places=2)
-
+    
     tipo_venta = models.CharField(
         max_length=20,
         choices=[('boleta', 'Boleta Electrónica'), ('factura', 'Factura Electrónica')],
@@ -24,7 +32,7 @@ class Venta(models.Model):
         ],
         default='efectivo'
     )
-
+    
     cliente_paga = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     vuelto_entregado = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     numero_transaccion = models.CharField(
@@ -33,7 +41,6 @@ class Venta(models.Model):
         blank=True, 
         verbose_name="Número de Transacción"
     )
-    # Nuevo campo para almacenar el banco en caso de transferencia
     banco = models.CharField(
         max_length=100,
         null=True,
@@ -42,92 +49,49 @@ class Venta(models.Model):
     )
     
     def __str__(self):
-        return f"Venta #{self.id} - Total: ${self.formatted_total}"
+        return f"Venta #{self.id} - Total: {self.total}"
 
-    def _format_currency(self, value):
-        try:
-            # Convierte el número a flotante, sin decimales y con puntos para separar los miles
-            return "{:,.0f}".format(float(value)).replace(",", ".")
-        except Exception:
-            return value
-
-    @property
-    def formatted_total(self):
-        return self._format_currency(self.total)
-
-    @property
-    def formatted_cliente_paga(self):
-        return self._format_currency(self.cliente_paga)
-
-    @property
-    def formatted_vuelto_entregado(self):
-        return self._format_currency(self.vuelto_entregado)
-
-
+# Modelo para el detalle de la venta
 class VentaDetalle(models.Model):
     venta = models.ForeignKey(Venta, related_name='detalles', on_delete=models.CASCADE)
     producto = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='ventadetalles')
     cantidad = models.PositiveIntegerField()
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
-
+    
     @property
     def subtotal(self):
         return self.cantidad * self.precio_unitario
 
-    @property
-    def formatted_precio_unitario(self):
-        try:
-            return "{:,.0f}".format(float(self.precio_unitario)).replace(",", ".")
-        except Exception:
-            return self.precio_unitario
-
-    @property
-    def formatted_subtotal(self):
-        try:
-            return "{:,.0f}".format(float(self.subtotal)).replace(",", ".")
-        except Exception:
-            return self.subtotal
-
-
-User = get_user_model()
-
+# Modelo de Apertura y Cierre de Caja (actualizado)
 class AperturaCierreCaja(models.Model):
-    ESTADO_CAJA = [
-        ('abierta', 'Abierta'),
-        ('cerrada', 'Cerrada'),
-    ]
-
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Cajero Responsable")
-    fecha_apertura = models.DateTimeField(auto_now_add=True, verbose_name="Fecha y Hora de Apertura")
-    fecha_cierre = models.DateTimeField(null=True, blank=True, verbose_name="Fecha y Hora de Cierre")
-    efectivo_inicial = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Efectivo Inicial (Caja Chica)")
-    total_ventas_efectivo = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, verbose_name="Total Ventas en Efectivo")
-    total_ventas_credito = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, verbose_name="Total Ventas con Tarjeta de Crédito")
-    total_ventas_debito = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, verbose_name="Total Ventas con Tarjeta de Débito")
-    estado = models.CharField(max_length=10, choices=ESTADO_CAJA, default='abierta', verbose_name="Estado de la Caja")
-    ventas_totales = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0.0,
-        verbose_name="Ventas Totales"
+    vendedor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        verbose_name='Vendedor'
     )
-    vuelto_entregado = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2, 
-        default=0.0, 
-        verbose_name="Total Vuelto Entregado"
-    )
-    efectivo_final = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0.0,
-        verbose_name="Efectivo Final"
-    )
+    sucursal = models.ForeignKey(Sucursal, on_delete=models.CASCADE)
+    efectivo_inicial = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    estado = models.CharField(max_length=20, default='abierta')  # valores: 'abierta' o 'cerrada'
+    apertura = models.DateTimeField(auto_now_add=True)
+    cierre = models.DateTimeField(null=True, blank=True)
+    # Campos adicionales para el cierre de caja agregados
+    ventas_totales = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_ventas_efectivo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_ventas_credito = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_ventas_debito = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    vuelto_entregado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    efectivo_final = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
-    class Meta:
-        verbose_name = "Apertura y Cierre de Caja"
-        verbose_name_plural = "Aperturas y Cierres de Caja"
-
     def __str__(self):
-        return f"Caja {self.estado.capitalize()} - {self.usuario.username} - {self.fecha_apertura.strftime('%d-%m-%Y %H:%M')}"
+        return f"Caja {self.id} - {self.vendedor.username} - {self.estado}"
+
+    class Meta:
+        constraints = [
+            # Garantiza que sólo exista una caja 'abierta' por sucursal a la vez
+            models.UniqueConstraint(
+                fields=['sucursal'],
+                condition=Q(estado='abierta'),
+                name='unique_open_caja_per_sucursal'
+            )
+        ]
 

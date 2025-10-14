@@ -1,22 +1,25 @@
-<!--abrir caja-->
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <h2>Apertura Caja</h2>
-    <form method="POST">
+<div class="container mt-4">
+    <h2>Abrir Caja</h2>
+    <form method="post">
         {% csrf_token %}
-        <div class="form-group">
-            <label for="efectivo_inicial">Efectivo Inicial:</label>
-            <input type="number" class="form-control" id="efectivo_inicial" name="efectivo_inicial" placeholder="Ingrese el monto inicial en caja" required>
+        <div class="mb-3">
+            <label for="sucursal" class="form-label">Seleccione Sucursal:</label>
+            <select name="sucursal" id="sucursal" class="form-select">
+                <option value="" disabled selected>-- Seleccione una sucursal --</option>
+                {% for sucursal in sucursales %}
+                    <option value="{{ sucursal.id }}">{{ sucursal.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="efectivo_inicial" class="form-label">Efectivo Inicial:</label>
+            <input type="number" step="0.01" class="form-control" id="efectivo_inicial" name="efectivo_inicial" value="0">
         </div>
         <button type="submit" class="btn btn-primary">Abrir Caja</button>
+        <a href="{% url 'logout' %}" class="btn btn-danger" onclick="return confirm('¿Está seguro que desea cerrar sesión?');">Cerrar Sesión</a>
     </form>
 </div>
-<div class="d-flex justify-content-between mt-3">
-    {% if not user.is_superuser %}
-        <a href="{% url 'logout' %}" class="btn btn-danger">Cerrar Sesión</a>
-    {% endif %}
-</div>
-
 {% endblock %}

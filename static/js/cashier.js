@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // Referencias de elementos generales
     const cerrarCajaBtn = document.getElementById("close-cash-button");
     const confirmarCompraButton = document.getElementById("confirmar-compra");
     const cantidadPagadaInput = document.getElementById("cantidad_pagada");
@@ -10,37 +9,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("product-search-input");
     const resultsList = document.getElementById("product-search-results");
     const barcodeInput = document.getElementById("barcode-input");
-
-    // Referencias a inputs ocultos y contenedores extra
     const saleTypeInput = document.getElementById("sale-type");
     const paymentHiddenInput = document.getElementById("payment-method");
     const numeroTransaccionInput = document.getElementById("numero_transaccion");
     const transactionInfoContainer = document.getElementById("transaction-info");
     const bancoInfoContainer = document.getElementById("banco-info");
     const bancoInput = document.getElementById("banco");
-
-    // Referencia al botón del modal de confirmación
     const confirmAndPrintBtn = document.getElementById("confirmAndPrintBtn");
     const confirmModalElement = document.getElementById("confirmPurchaseModal");
     const confirmModal = new bootstrap.Modal(confirmModalElement);
 
-    // Variables para almacenar selección y carrito
     let tipoVenta = "boleta";
     let formaPago = "efectivo";
     let carrito = new Map();
     let totalCarrito = 0;
 
-    // Función para formatear moneda (sin decimales)
     function formatChileanCurrency(number) {
-        return number.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+        return number.toLocaleString("es-CL", { maximumFractionDigits: 0 });
     }
 
-    // Obtención del token CSRF
-    function getCSRFToken() {
-        return document.cookie.split("; ").find(row => row.startsWith("csrftoken="))?.split("=")[1] || null;
-    }
-
-    // Función para mostrar mensajes Toast
     function showToast(message, type = "success") {
         const toastContainer = document.getElementById("toast-container") || (() => {
             const tc = document.createElement("div");
@@ -52,10 +39,9 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.appendChild(tc);
             return tc;
         })();
-
         const toastId = `toast-${Date.now()}`;
         toastContainer.innerHTML += `
-            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0 show" role="alert">
                 <div class="d-flex">
                     <div class="toast-body fs-6">${message}</div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
@@ -67,9 +53,20 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => toastElement.remove(), 4500);
     }
 
-    // Función para calcular el vuelto:
-    // Efectivo: si el campo pago está vacío, se muestra -total; de lo contrario, (pago - total).
-    // Otros métodos: siempre 0.
+    function getCSRFToken() {
+        // Prefer meta/template-provided token to match server-side token for this path
+        const meta = document.querySelector('meta[name="csrf-token"], meta[name="csrfmiddlewaretoken"], input[name="csrfmiddlewaretoken"]');
+        if (meta && (meta.content || meta.value)) return meta.content || meta.value;
+        // Fallback: pick the LAST csrftoken cookie
+        const cookies = document.cookie ? document.cookie.split(';') : [];
+        let lastToken = null;
+        for (const part of cookies) {
+            const [rawName, ...rest] = part.trim().split('=');
+            if (rawName === 'csrftoken') lastToken = decodeURIComponent(rest.join('='));
+        }
+        return lastToken || "";
+    }
+
     function calcularVuelto() {
         if (formaPago === "efectivo") {
             if (cantidadPagadaInput.value.trim() === "") {
@@ -85,7 +82,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     cantidadPagadaInput.addEventListener("input", calcularVuelto);
 
-    // Función de debounce para búsquedas
     function debounce(func, delay = 300) {
         let timeout;
         return (...args) => {
@@ -94,7 +90,6 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // Búsqueda de productos
     async function searchProducts(query) {
         try {
             const res = await fetch(`/cashier/buscar-producto/?q=${query}`);
@@ -107,9 +102,10 @@ document.addEventListener("DOMContentLoaded", () => {
             data.productos.forEach(p => {
                 const li = document.createElement("li");
                 li.className = "list-group-item d-flex justify-content-between align-items-center";
+                const disabled = (p.en_sucursal === false);
                 li.innerHTML = `
-                    <span>${p.nombre} - $${formatChileanCurrency(parseFloat(p.precio_venta))}</span>
-                    <button class="btn btn-success btn-sm" data-id="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio_venta}">
+                    <span>${p.nombre} - $${formatChileanCurrency(parseFloat(p.precio_venta))} <small class="text-muted">(Stock: ${p.stock}${disabled ? ', otra sucursal' : ''})</small></span>
+                    <button class="btn btn-success btn-sm" ${disabled ? 'disabled' : ''} data-id="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio_venta}" data-stock="${p.stock}" data-allow="${p.permitir_venta_sin_stock}">
                         <i class="fas fa-plus"></i>
                     </button>
                 `;
@@ -126,7 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
         searchProducts(query);
     }));
     searchInput.addEventListener("keydown", (event) => {
-        if (event.key === 'Enter') {
+        if (event.key === "Enter") {
             event.preventDefault();
             const query = searchInput.value.trim();
             if (!query) return showToast("Ingresa un término de búsqueda.", "warning");
@@ -134,44 +130,61 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
     resultsList.addEventListener("click", (e) => {
-        if (e.target.closest("button")) {
-            const button = e.target.closest("button");
-            const { id, nombre, precio } = button.dataset;
-            agregarAlCarrito(parseInt(id), nombre, parseFloat(precio));
+        const button = e.target.closest("button");
+        if (button) {
+            const { id, stock, allow } = button.dataset;
+            if (String(allow) === "false" && parseInt(stock) <= 0) {
+                showToast("Producto agotado en esta sucursal.", "warning");
+                return;
+            }
+            agregarAlCarrito(parseInt(id));
         }
     });
-    async function agregarAlCarrito(productoId, nombre, precio) {
-        if (!productoId) return;
+
+    async function agregarAlCarrito(productoId) {
         try {
-            const res = await fetch(`/cashier/agregar-al-carrito/`, {
+            const response = await fetch("/cashier/agregar-al-carrito/", {
                 method: "POST",
+                credentials: "same-origin",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRFToken": getCSRFToken()
                 },
                 body: JSON.stringify({ producto_id: productoId })
             });
-            const data = await res.json();
-            if (!res.ok) {
-                showToast(data.error || "Error al agregar al carrito.", "danger");
+            const text = await response.text();
+            console.log("Respuesta del servidor:", text);
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                console.error("Error al parsear JSON:", err);
                 return;
             }
-            const item = data.carrito.find(item => item.producto_id === productoId);
-            if (item) {
-                carrito.set(productoId, {
-                    producto_id: item.producto_id,
-                    nombre: item.nombre,
-                    precio: item.precio,
-                    cantidad: item.cantidad
-                });
-                actualizarCarrito();
-                showToast("Producto agregado al carrito", "success");
+            if (data.error) {
+                showToast(data.error, "danger");
+            } else {
+                showToast(data.mensaje || "Producto agregado al carrito", "success");
+                if (data.carrito) {
+                    carrito.clear();
+                    data.carrito.forEach(item => {
+                        carrito.set(item.producto_id, {
+                            producto_id: item.producto_id,
+                            nombre: item.nombre,
+                            precio: parseFloat(item.precio),
+                            cantidad: item.cantidad,
+                            stock: (typeof item.stock !== 'undefined') ? item.stock : undefined,
+                            permitir_venta_sin_stock: (typeof item.permitir_venta_sin_stock !== 'undefined') ? item.permitir_venta_sin_stock : true
+                        });
+                    });
+                    actualizarCarrito();
+                }
             }
         } catch (err) {
-            console.error("Error al agregar al carrito:", err);
-            showToast("Error de conexión al agregar al carrito.", "danger");
+            console.error("Error en la petición fetch:", err);
         }
     }
+
     function actualizarCarrito() {
         cartItemsContainer.innerHTML = "";
         totalCarrito = 0;
@@ -190,57 +203,62 @@ document.addEventListener("DOMContentLoaded", () => {
                     </td>
                 `;
                 cartItemsContainer.appendChild(row);
+                totalCarrito += (cantidad * precio);
             });
         }
-        totalCarrito = Array.from(carrito.values()).reduce((acc, item) => acc + (item.cantidad * item.precio), 0);
         totalPriceElement.textContent = `$${formatChileanCurrency(totalCarrito)}`;
         if (["debito", "credito", "transferencia"].includes(formaPago)) {
             cantidadPagadaInput.value = totalCarrito;
         }
         calcularVuelto();
     }
+
     cartItemsContainer.addEventListener("click", (e) => {
         const targetButton = e.target.closest("button");
         if (!targetButton) return;
         const productoId = parseInt(targetButton.dataset.id);
-        if (!productoId) return;
         const item = carrito.get(productoId);
-        if (targetButton.dataset.action === "increment") {
-            item.cantidad++;
-        } else if (targetButton.dataset.action === "decrement") {
-            item.cantidad--;
-            if (item.cantidad <= 0) carrito.delete(productoId);
+        if (item) {
+            if (targetButton.dataset.action === "increment") {
+                // Evitar sobrepasar stock cuando no se permite venta sin stock
+                if (item.permitir_venta_sin_stock === false || item.permitir_venta_sin_stock === "false") {
+                    if (typeof item.stock === 'number' && item.cantidad >= item.stock) {
+                        showToast("No hay más stock disponible de este producto.", "warning");
+                        return;
+                    }
+                }
+                item.cantidad++;
+            } else if (targetButton.dataset.action === "decrement") {
+                item.cantidad--;
+                if (item.cantidad <= 0) carrito.delete(productoId);
+            }
+            actualizarCarrito();
         }
-        actualizarCarrito();
     });
 
-    // --- Manejo de botones para Tipo de Venta ---
-    document.querySelectorAll('[data-sale-type]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('[data-sale-type]').forEach(function(b) {
+    document.querySelectorAll("[data-sale-type]").forEach(btn => {
+        btn.addEventListener("click", function() {
+            document.querySelectorAll("[data-sale-type]").forEach(b => {
                 b.classList.remove("btn-primary", "active");
                 b.classList.add("btn-outline-primary");
             });
             this.classList.remove("btn-outline-primary");
             this.classList.add("btn-primary", "active");
-            saleTypeInput.value = this.getAttribute('data-sale-type');
-            tipoVenta = this.getAttribute('data-sale-type');
+            saleTypeInput.value = this.getAttribute("data-sale-type");
+            tipoVenta = this.getAttribute("data-sale-type");
         });
     });
 
-    // --- Manejo de botones para Forma de Pago ---
-    document.querySelectorAll('[data-payment-method]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('[data-payment-method]').forEach(function(b) {
+    document.querySelectorAll("[data-payment-method]").forEach(btn => {
+        btn.addEventListener("click", function() {
+            document.querySelectorAll("[data-payment-method]").forEach(b => {
                 b.classList.remove("btn-primary", "active");
                 b.classList.add("btn-outline-primary");
             });
             this.classList.remove("btn-outline-primary");
             this.classList.add("btn-primary", "active");
-            if (paymentHiddenInput) {
-                paymentHiddenInput.value = this.getAttribute('data-payment-method');
-            }
-            formaPago = this.getAttribute('data-payment-method');
+            if (paymentHiddenInput) paymentHiddenInput.value = this.getAttribute("data-payment-method");
+            formaPago = this.getAttribute("data-payment-method");
 
             if (["debito", "credito", "transferencia"].includes(formaPago)) {
                 cantidadPagadaInput.value = totalCarrito;
@@ -252,7 +270,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     vueltoElement.textContent = `-$${formatChileanCurrency(totalCarrito)}`;
                 }
             }
-
             if (["debito", "credito", "transferencia"].includes(formaPago)) {
                 transactionInfoContainer.style.display = "block";
             } else {
@@ -270,9 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Al hacer clic en "Confirmar Compra", se muestra el modal de confirmación
     confirmarCompraButton.addEventListener("click", () => {
-        // Validaciones previas
         if (carrito.size === 0) {
             showToast("El carrito está vacío", "warning");
             return;
@@ -284,23 +299,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
         }
-        if (["debito", "credito", "transferencia"].includes(formaPago) && !numeroTransaccionInput.value.trim()) {
-            showToast("Debe ingresar el número de transacción.", "error");
+        if ((["debito", "credito", "transferencia"].includes(formaPago)) && !numeroTransaccionInput.value.trim()) {
+            showToast("Debe ingresar el número de transacción.", "danger");
             return;
         }
         if (formaPago === "transferencia" && !bancoInput.value.trim()) {
-            showToast("Debe ingresar el nombre del banco.", "error");
+            showToast("Debe ingresar el nombre del banco.", "danger");
             return;
         }
-        // Se muestra el modal para confirmar la compra
         confirmModal.show();
     });
 
-    // Al confirmar en el modal, se efectúa la compra y se redirige (si hay reporte)
     confirmAndPrintBtn.addEventListener("click", async () => {
         try {
             const res = await fetch("/cashier/", {
                 method: "POST",
+                credentials: "same-origin",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRFToken": getCSRFToken()
@@ -320,62 +334,115 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
             showToast("Compra confirmada con éxito", "success");
-            // Limpia la variable local
             carrito.clear();
             actualizarCarrito();
-            // Llama al endpoint para limpiar el carrito de la sesión
-            await fetch("/cashier/limpiar_carrito/", {
+            await fetch("/cashier/limpiar-carrito/", {
                 method: "POST",
-                headers: {
-                    "X-CSRFToken": getCSRFToken()
-                }
+                credentials: "same-origin",
+                headers: { "X-CSRFToken": getCSRFToken() }
             });
             confirmModal.hide();
-            if (data.reporte_url) window.open(data.reporte_url, "_blank");
+            // Abrir el reporte en una ventana pequeña (modal) dentro de la vista de cajero
+            if (data.reporte_url) {
+                try {
+                    // Convertir URL de reporte a la URL de embed
+                    let embedUrl = data.reporte_url;
+                    const matchId = data.reporte_url.match(/\/(\d+)\/?$/);
+                    if (matchId) {
+                        const ventaId = matchId[1];
+                        embedUrl = `/cashier/reporte/embed/${ventaId}/`;
+                    }
+                    const resp = await fetch(embedUrl, { credentials: "same-origin" });
+                    const html = await resp.text();
+                    const bodyEl = document.getElementById("saleReportModalBody");
+                    bodyEl.innerHTML = html;
+                    const modal = new bootstrap.Modal(document.getElementById("saleReportModal"));
+                    modal.show();
+                    const printBtn = document.getElementById("printSaleReportBtn");
+                    if (printBtn) {
+                        printBtn.onclick = () => {
+                            // Abrir versión térmica de la venta para impresión POS
+                            // Convertir URL de reporte a /cashier/print/venta/<id>/
+                            const match = data.reporte_url.match(/\/(\d+)\/?$/);
+                            if (match) {
+                                const ventaId = match[1];
+                                window.open(`/cashier/print/venta/${ventaId}/`, '_blank');
+                            } else {
+                                window.print();
+                            }
+                        };
+                    }
+                } catch (e) {
+                    console.error("No se pudo cargar el reporte en modal:", e);
+                    window.open(data.reporte_url, "_blank");
+                }
+            }
         } catch (err) {
             console.error("Error al confirmar compra:", err);
             showToast("Error al procesar la compra", "danger");
         }
     });
 
-    // Cerrar Caja
     if (cerrarCajaBtn) {
-        cerrarCajaBtn.addEventListener("click", async () => {
+        cerrarCajaBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            if (!confirm("¿Estás seguro de cerrar la caja?")) return;
             try {
                 const res = await fetch("/cashier/cerrar_caja/", {
                     method: "POST",
+                    credentials: "same-origin",
                     headers: {
-                        "X-CSRFToken": getCSRFToken(),
-                        "Content-Type": "application/json"
-                    }
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({}) 
                 });
                 const data = await res.json();
-                if (data.success && data.caja_id) {
-                    showToast("Caja cerrada con éxito.", "success");
-                    window.location.href = `/cashier/detalle-caja/${data.caja_id}/`;
+                if (data.success) {
+                    showToast("Caja cerrada exitosamente", "success");
+                    if (data.detalle_url) {
+                        window.location.href = data.detalle_url;
+                    }
                 } else {
-                    showToast(data.error || "Error al cerrar la caja.", "danger");
+                    showToast(data.error || "Error al cerrar la caja", "danger");
                 }
             } catch (err) {
+                console.error("Error al cerrar la caja:", err);
                 showToast("Error al cerrar la caja", "danger");
             }
         });
     }
 
-    // Al cerrar caja, solicitar confirmación
-    if(cerrarCajaBtn) {
-        cerrarCajaBtn.addEventListener("click", (e) => {
-            if (!confirm("¿Estás seguro que deseas cerrar la caja?")) {
-                e.preventDefault();
-            } else {
-                // Si la acción de cerrar caja se realiza mediante un fetch o redirección,
-                // se continúa; de lo contrario, en caso de un formulario, se puede proceder.
-                // Ejemplo: llamar a la función de cerrar caja.
+    function forzarCierreCaja(cajaId) {
+        if (!confirm("¿Estás seguro de que deseas forzar el cierre de la caja?")) return;
+        fetch("/cashier/cerrar_caja/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken()
+            },
+            body: JSON.stringify({ caja_id: cajaId })
+        })
+        .then(async (response) => {
+            const ct = response.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`HTTP ${response.status} - ${text.substring(0, 200)}...`);
             }
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || `HTTP ${response.status}`);
+            }
+            alert("Caja cerrada correctamente.");
+            if (data.detalle_url) window.location.href = data.detalle_url;
+        })
+        .catch(err => {
+            console.error("Error en forzarCierreCaja:", err);
+            alert(`Error al cerrar la caja: ${err && err.message ? err.message : err}`);
         });
     }
 
-    // Escaneo de código de barras
     async function handleBarcodeScan() {
         const barcode = barcodeInput.value.trim();
         if (!barcode) return;
@@ -384,7 +451,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
             if (data.productos.length > 0) {
                 const product = data.productos[0];
-                agregarAlCarrito(product.id, product.nombre, parseFloat(product.precio_venta));
+                agregarAlCarrito(product.id);
                 barcodeInput.value = "";
             } else {
                 showToast("Producto no encontrado. Intenta de nuevo.", "warning");
@@ -396,16 +463,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     barcodeInput.addEventListener("keydown", (event) => {
-        if (event.key === 'Enter') {
+        if (event.key === "Enter") {
             event.preventDefault();
             handleBarcodeScan();
         }
     });
 
-    // Inicialización en caso de carrito vacío
     if (carrito.size === 0) {
         cantidadPagadaInput.value = "";
         totalPriceElement.textContent = `$0`;
         vueltoElement.textContent = `$0`;
     }
 });
+
+function mostrarToast(mensaje, tipo = "success") {
+    console.log(`Toast (${tipo}): ${mensaje}`);
+}

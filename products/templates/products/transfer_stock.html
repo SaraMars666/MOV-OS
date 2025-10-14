@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container content-max py-3">
+  <h3>Transferir stock entre sucursales</h3>
+  <form method="post">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Producto</label>
+        <select class="form-select" name="producto_id" required>
+          <option value="" disabled selected>Seleccione un producto</option>
+          {% for p in productos %}
+            <option value="{{ p.id }}" {% if pre_producto == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }} ({{ p.producto_id }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Sucursal origen</label>
+        <select class="form-select" name="sucursal_origen" required>
+          <option value="" disabled selected>Seleccione</option>
+          {% for s in sucursales %}
+            <option value="{{ s.id }}" {% if pre_origen == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Sucursal destino</label>
+        <select class="form-select" name="sucursal_destino" required>
+          <option value="" disabled selected>Seleccione</option>
+          {% for s in sucursales %}
+            <option value="{{ s.id }}">{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Cantidad</label>
+        <input type="number" min="1" class="form-control" name="cantidad" placeholder="Ej: 10" required>
+      </div>
+      <div class="col-12">
+  <button class="btn btn-primary" type="submit">Transferir</button>
+        {% if request.user.is_superuser %}
+          {% url 'product_management' as back_href %}
+          {% include 'partials/back_button.html' with href=back_href text='Volver a Productos' %}
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

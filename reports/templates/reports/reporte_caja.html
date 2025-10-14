@@ -1,46 +1,53 @@
+{# filepath: c:\Users\rocha\OneDrive\Escritorio\Sistema-POS-main\reports\templates\reports\reporte_caja.html #}
 {% extends 'base.html' %}
 {% load static %}
 {% load humanize %}
 
-
-
 {% block extra_styles %}
-
 <link rel="stylesheet" href="{% static 'css/print.css' %}" media="print">
 {% endblock %}
 
 {% block content %}
-
-<div class="container mt-4">
-<h2>Detalle de Cierre de Caja</h2>
-<div class="row">
-<div class="col-md-6 mb-4">
-<div class="card p-4 h-100">
-<h4>Información de la Caja</h4>
-<p><strong>ID de Caja:</strong> {{ caja.id }}</p>
-<p><strong>Cajero:</strong> {{ caja.usuario.username }}</p>
-<p><strong>Fecha de Apertura:</strong> {{ caja.fecha_apertura|date:"d/m/Y H:i" }}</p>
-<p><strong>Fecha de Cierre:</strong> {% if caja.fecha_cierre %}{{ caja.fecha_cierre|date:"d/m/Y H:i" }}{% else %}<em>Aún no se ha cerrado</em>{% endif %}</p>
-</div>
-</div>
-
-<div class="col-md-6 mb-4">
-<div class="card p-4 h-100">
-<h4>Resumen Financiero</h4>
-<p><strong>Efectivo Inicial:</strong> {{ caja.formatted_efectivo_inicial }}</p>
-<p><strong>Total en Débito:</strong> {{ caja.formatted_total_ventas_debito }}</p>
-<p><strong>Total en Crédito:</strong> {{ caja.formatted_total_ventas_credito }}</p>
-<p><strong>Total en Efectivo:</strong> {{ caja.formatted_total_ventas_efectivo }}</p>
-<p><strong>Vuelto Entregado:</strong> {{ caja.formatted_vuelto_entregado }}</p>
-<p><strong>Efectivo Final en Caja:</strong> {{ caja.formatted_efectivo_final }}</p>
-<p><strong>Total de Ventas:</strong> {{ caja.formatted_ventas_totales }}</p>
-</div>
-</div>
-</div>
-
-<div class="no-print d-flex gap-2 mt-3">
-     <button onclick="window.print()" class="btn btn-primary">Imprimir Detalle</button>
-     <a href="{% url 'historial_caja' %}" class="btn btn-secondary">Volver</a>
-</div>
+<div class="container content-max mt-4">
+        <h2>Detalle de Cierre de Caja</h2>
+        <div class="row">
+                <div class="col-md-6 mb-4">
+                        <div class="card p-4 h-100">
+                                <h4>Información de la Caja</h4>
+                                <p><strong>ID de Caja:</strong> {{ caja.id }}</p>
+                                <p><strong>Cajero:</strong> {{ caja.vendedor.username }}</p>
+                                <p><strong>Sucursal:</strong> {{ caja.sucursal.nombre }}</p>
+                                <p><strong>Fecha de Apertura:</strong> {{ caja.apertura|date:"d/m/Y H:i" }}</p>
+                                <p>
+                                        <strong>Fecha de Cierre:</strong>
+                                        {% if caja.cierre %}
+                                                {{ caja.cierre|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                                <em>Aún no se ha cerrado</em>
+                                        {% endif %}
+                                </p>
+                        </div>
+                </div>
+    
+                <div class="col-md-6 mb-4">
+                        <div class="card p-4 h-100">
+                                <h4>Resumen Financiero</h4>
+                                <p><strong>Efectivo Inicial:</strong> {{ caja.formatted_efectivo_inicial }}</p>
+                                <p><strong>Total en Débito:</strong> {{ caja.formatted_total_ventas_debito }}</p>
+                                <p><strong>Total en Crédito:</strong> {{ caja.formatted_total_ventas_credito }}</p>
+                                <p><strong>Total en Transferencia:</strong> {{ caja.formatted_total_ventas_transferencia }}</p>
+                                <p><strong>Total en Efectivo:</strong> {{ caja.formatted_total_ventas_efectivo }}</p>
+                                <p><strong>Vuelto Entregado:</strong> {{ caja.formatted_vuelto_entregado }}</p>
+                                <p><strong>Efectivo Final en Caja:</strong> {{ caja.formatted_efectivo_final }}</p>
+                                <p><strong>Total de Ventas:</strong> {{ caja.formatted_ventas_totales }}</p>
+                        </div>
+                </div>
+        </div>
+    
+        <div class="no-print d-flex gap-2 mt-3">
+                 <a href="{% url 'print_caja' caja.id %}" target="_blank" class="btn btn-primary">Imprimir Detalle</a>
+                 {% url 'reports:historial_caja' as back_href %}
+                 {% include 'partials/back_button.html' with href=back_href text='Volver al Historial de Caja' %}
+        </div>
 </div>
 {% endblock %}

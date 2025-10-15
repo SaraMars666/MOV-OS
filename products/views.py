@@ -9,7 +9,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from openpyxl import Workbook, load_workbook
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from datetime import datetime
+from datetime import datetime, date
 from django.utils.dateparse import parse_date 
 from sucursales.models import Sucursal
 from django.conf import settings
@@ -171,10 +171,13 @@ def upload_products(request):
             return redirect('upload_products')
 
         try:
-            workbook = load_workbook(file, data_only=True)
+            # Use read_only streaming mode to reduce memory usage on low-RAM instances
+            workbook = load_workbook(file, read_only=True, data_only=True)
             sheet = workbook.active
 
-            header_row_values = [str(cell.value).strip() for cell in sheet[1]]
+            # In read_only mode, avoid random access like sheet[1]; iterate the first row instead
+            first_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True), None)
+            header_row_values = [str(v).strip() for v in (first_row or [])]
             header_map = {header: idx for idx, header in enumerate(header_row_values) if header}
             minimal_headers = ['NOMBRE', 'CODIGO 1', 'PRECIO DE COMPRA', 'PRECIO DE VENTA']
             missing = [h for h in minimal_headers if h not in header_map]
@@ -231,7 +234,7 @@ def upload_products(request):
                     fecha_ingreso_producto = None
                     fecha_raw = get_val('FECHA DE INGRESO')
                     if fecha_raw:
-                        if isinstance(fecha_raw, (datetime, datetime.date)):
+                        if isinstance(fecha_raw, (datetime, date)):
                             fecha_ingreso_producto = fecha_raw.date() if isinstance(fecha_raw, datetime) else fecha_raw
                         else:
                             try:
@@ -287,6 +290,12 @@ def upload_products(request):
             else:
                 created_count = len(to_create)
                 updated_count = len(to_update)
+
+            # Close workbook explicitly to free resources early
+            try:
+                workbook.close()
+            except Exception:
+                pass
 
             total_processed = created_count + updated_count
             if dry_run:

@@ -14,8 +14,29 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security & environment
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-5o(k+1^on5m8ca--ieap-e%wqn6(#vnouc8%i3!tbt-((1%hh7')
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver,.koyeb.app,.onrender.com').split(',') if h.strip()]
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://*.koyeb.app,https://*.onrender.com,http://127.0.0.1:8000,http://localhost:8000').split(',') if o.strip()]
+
+# Host and CSRF settings
+# Allow a troubleshooting override in environments where the health checker uses a non-standard Host header.
+if os.environ.get('ALLOW_ALL_HOSTS', 'false').lower() in ('1', 'true', 'yes'):
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [
+        h.strip()
+        for h in os.environ.get(
+            'ALLOWED_HOSTS',
+            'localhost,127.0.0.1,::1,testserver,.koyeb.app,.onrender.com'
+        ).split(',')
+        if h.strip()
+    ]
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        'CSRF_TRUSTED_ORIGINS',
+        'https://*.koyeb.app,https://*.onrender.com,http://127.0.0.1:8000,http://localhost:8000'
+    ).split(',')
+    if o.strip()
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',

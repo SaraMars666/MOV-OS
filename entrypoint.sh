@@ -46,4 +46,14 @@ print(f"Superuser '{username}' ready (created={created})")
 PY
 fi
 
+# Optional: import products on boot if a path/url is provided (streaming, low memory)
+if [ -n "$IMPORT_PRODUCTS_PATH" ]; then
+  echo "Importing products from $IMPORT_PRODUCTS_PATH (dry-run=${IMPORT_PRODUCTS_DRY_RUN:-false})"
+  if [ "${IMPORT_PRODUCTS_DRY_RUN:-false}" = "true" ]; then
+    python manage.py import_products "$IMPORT_PRODUCTS_PATH" --dry-run --batch "${IMPORT_PRODUCTS_BATCH:-500}" || true
+  else
+    python manage.py import_products "$IMPORT_PRODUCTS_PATH" --batch "${IMPORT_PRODUCTS_BATCH:-500}" || true
+  fi
+fi
+
 exec "$@"

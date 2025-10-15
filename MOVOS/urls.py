@@ -10,6 +10,7 @@ def redirect_to_login(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('healthz', lambda r: HttpResponse('ok'), name='healthz'),
+    path('healthz/', lambda r: HttpResponse('ok')),  # also accept trailing slash
     path('auth/', include('auth_app.urls')),         # login y logout en auth_app
     path('users/', include('users.urls')),            # admin_dashboard, user_management, etc.
     path('products/', include('products.urls')),      # product_management, etc.

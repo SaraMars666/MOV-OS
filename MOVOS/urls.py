@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from django.http import HttpResponse
 from users import views  # Usado para custom_login
 
 def redirect_to_login(request):
@@ -8,6 +9,7 @@ def redirect_to_login(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('healthz', lambda r: HttpResponse('ok'), name='healthz'),
     path('auth/', include('auth_app.urls')),         # login y logout en auth_app
     path('users/', include('users.urls')),            # admin_dashboard, user_management, etc.
     path('products/', include('products.urls')),      # product_management, etc.

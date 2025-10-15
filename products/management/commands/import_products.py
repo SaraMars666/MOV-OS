@@ -6,6 +6,7 @@ from datetime import datetime, date
 from django.utils.dateparse import parse_date
 
 import os
+from urllib.parse import urlparse, parse_qs
 
 class Command(BaseCommand):
     help = "Import products from a CSV or XLSX file in a memory-friendly streaming way."
@@ -17,9 +18,22 @@ class Command(BaseCommand):
 
     def handle(self, path, dry_run=False, batch=500, **options):
         try:
-            if path.lower().endswith(".csv"):
+            filetype = None
+            plower = path.lower()
+            if plower.endswith('.csv'):
+                filetype = 'csv'
+            elif plower.endswith('.xlsx'):
+                filetype = 'xlsx'
+            elif plower.startswith('http://') or plower.startswith('https://'):
+                # Support Google Sheets export URLs like .../export?format=xlsx
+                q = parse_qs(urlparse(path).query)
+                fmt = (q.get('format') or [None])[0]
+                if fmt in ('csv', 'xlsx'):
+                    filetype = fmt
+
+            if filetype == 'csv':
                 created, updated = self._import_csv(path, dry_run, batch)
-            elif path.lower().endswith(".xlsx"):
+            elif filetype == 'xlsx':
                 created, updated = self._import_xlsx(path, dry_run, batch)
             else:
                 raise CommandError("Unsupported file type. Use .csv or .xlsx")

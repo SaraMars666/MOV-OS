@@ -18,7 +18,8 @@ body {
 /* Fondo con imagen de castillos y árboles en el body */
 body::before {
     content: "";
-    background: url("{% static 'games/images/medieval_background.jpg' %}") no-repeat center center;
+    /* Use a plain relative path so collectstatic works without Django template tags in CSS */
+    background: url("/static/games/images/medieval_background.jpg") no-repeat center center;
     background-size: cover;
     opacity: 0.3;
     position: fixed;

@@ -13,15 +13,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install dependencies
 COPY requirements.txt ./
-# Filter out Windows-only TA-Lib wheel if present to avoid build failures in Linux
+# Filter out Windows-only TA-Lib wheel if present to avoid build failures in Linux,
+# and handle non-UTF8 encodings (e.g., UTF-16) gracefully.
 RUN python - <<'PY'
 from pathlib import Path
+data = Path('requirements.txt').read_bytes()
+text = None
+for enc in ('utf-8', 'utf-16', 'utf-16-le', 'utf-16-be', 'latin-1'):
+    try:
+        text = data.decode(enc)
+        break
+    except Exception:
+        pass
+if text is None:
+    text = data.decode('utf-8', 'ignore')
 lines = []
-for line in Path('requirements.txt').read_text().splitlines():
+for line in text.splitlines():
     if line.strip().startswith('TA-Lib'):
         continue
     lines.append(line)
-Path('requirements.filtered.txt').write_text('\n'.join(lines) + '\n')
+Path('requirements.filtered.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
 PY
 RUN pip install --no-cache-dir -r requirements.filtered.txt
 

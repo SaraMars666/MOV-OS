@@ -13,7 +13,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Filter out Windows-only TA-Lib wheel if present to avoid build failures in Linux
+RUN python - <<'PY'
+from pathlib import Path
+lines = []
+for line in Path('requirements.txt').read_text().splitlines():
+    if line.strip().startswith('TA-Lib'):
+        continue
+    lines.append(line)
+Path('requirements.filtered.txt').write_text('\n'.join(lines) + '\n')
+PY
+RUN pip install --no-cache-dir -r requirements.filtered.txt
 
 # Project files
 COPY . .

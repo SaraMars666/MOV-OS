@@ -1,0 +1,22 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install deps and run tests",
+			"type": "shell",
+			"command": "python -m pip install -r requirements.txt ; python manage.py check ; python manage.py test",
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Install deps and run tests",
+			"type": "shell",
+			"command": "python -m pip install -r requirements.txt ; python manage.py check ; python manage.py test",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}

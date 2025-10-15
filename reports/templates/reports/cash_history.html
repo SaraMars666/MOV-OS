@@ -48,7 +48,7 @@
             </thead>
             <tbody>
                 {% for caja in cajas %}
-                <tr {% if caja.estado == 'cerrada' %} style="cursor:pointer" onclick="window.location.href='{% url 'reports:caja_report' caja.id %}'" {% endif %}>
+                <tr {% if caja.estado == 'cerrada' %} class="row-link" style="cursor:pointer" data-href="{% url 'reports:caja_report' caja.id %}" {% endif %}>
                     <td>{{ caja.id }}</td>
                     <td>{{ caja.vendedor.username }}</td>
                     <td>{{ caja.apertura|date:"d/m/Y H:i" }}</td>
@@ -73,7 +73,7 @@
                         {% if caja.estado == 'cerrada' %}
                             <a href="{% url 'reports:caja_report' caja.id %}" class="btn btn-sm btn-info">Ver Detalle</a>
                         {% else %}
-                            <button type="button" class="btn btn-sm btn-warning" onclick="forzarCierreCaja({{ caja.id }}); event.stopPropagation();">Forzar Cierre</button>
+                            <button type="button" class="btn btn-sm btn-warning btn-forzar-cierre" data-caja-id="{{ caja.id }}">Forzar Cierre</button>
                         {% endif %}
                     </td>
                 </tr>
@@ -181,5 +181,23 @@
             alert("Error al limpiar el historial.");
         });
     }
+    // Delegamos eventos al cargar el DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        // Click en filas cerradas para navegar
+        document.querySelectorAll('tr.row-link').forEach(function(row) {
+            row.addEventListener('click', function(ev) {
+                const href = row.getAttribute('data-href');
+                if (href) { window.location.href = href; }
+            });
+        });
+        // Botones de forzar cierre (evita propagar para no activar el click de fila)
+        document.querySelectorAll('button.btn-forzar-cierre').forEach(function(btn) {
+            btn.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                const id = btn.getAttribute('data-caja-id');
+                if (id) { forzarCierreCaja(id); }
+            });
+        });
+    });
 </script>
 {% endblock %}

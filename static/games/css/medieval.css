@@ -18,8 +18,8 @@ body {
 /* Fondo con imagen de castillos y árboles en el body */
 body::before {
     content: "";
-    /* Use a plain relative path so collectstatic works without Django template tags in CSS */
-    background: url("/static/games/images/medieval_background.jpg") no-repeat center center;
+    /* Evita referencia a un archivo inexistente durante collectstatic: usa un fondo degradado */
+    background: radial-gradient(circle at center, rgba(133, 94, 66, 0.25), rgba(0,0,0,0));
     background-size: cover;
     opacity: 0.3;
     position: fixed;

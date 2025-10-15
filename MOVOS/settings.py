@@ -79,6 +79,9 @@ if DB_ENGINE == 'postgres':
             'PORT': int(os.environ.get('POSTGRES_PORT', '5432')),
         }
     }
+    # Optional SSL (e.g., Neon, some managed Postgres)
+    if os.environ.get('POSTGRES_SSL', 'false').lower() in ('1', 'true', 'yes'):  
+        DATABASES['default']['OPTIONS'] = { 'sslmode': 'require' }
 else:
     DATABASES = {
         'default': {

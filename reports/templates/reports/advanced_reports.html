@@ -40,6 +40,17 @@
       </aside>
       <!-- Contenido Principal -->
       <main class="col-md-9">
+        <!-- Cabecera: acciones (Exportar / Volver) -->
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3 gap-2">
+          <h3 class="mb-0">Reportes Avanzados</h3>
+          <div class="d-flex gap-2">
+            <div class="btn-group" role="group" aria-label="Exportaciones">
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_pdf' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Exportar PDF</a>
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_docx' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Exportar Word</a>
+            </div>
+            <a href="{% url 'reports:report_dashboard' %}" class="btn btn-light btn-sm">Volver a Reportes</a>
+          </div>
+        </div>
         <!-- Filtro General con campos adicionales -->
         <div class="card mb-3" id="global-filters">
           <div class="card-header">
@@ -156,10 +167,7 @@
                 </p>
               </div>
             </div>
-            <div class="mt-3 d-flex gap-2 flex-wrap">
-              <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_pdf' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Descargar PDF</a>
-              <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_docx' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Descargar Word</a>
-            </div>
+            {# Acciones movidas a la cabecera #}
           </div>
         </div>
         <!-- Comparativo Periodo Anterior -->
@@ -463,10 +471,7 @@
             </table>
           </div>
         </div>
-        <!-- Botón para volver al Dashboard de Reportes -->
-        <div class="text-center my-4">
-          <a href="{% url 'reports:report_dashboard' %}" class="btn-back">Volver a Reportes</a>
-        </div>
+        {# Acciones movidas a la cabecera; se elimina botón duplicado abajo #}
       </main>
     </div>
   </div>

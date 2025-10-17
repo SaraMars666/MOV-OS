@@ -62,15 +62,9 @@
                         </a>
                     </th>
                     <th>
-                        <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=codigo2&order={% if sort_by == 'codigo2' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
-                            CÓDIGO 2
-                            {% if sort_by == 'codigo2' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
-                        </a>
-                    </th>
-                    <th>
-                        <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=proveedor&order={% if sort_by == 'proveedor' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
-                            PROVEEDOR
-                            {% if sort_by == 'proveedor' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
+                        <a href="?page=1&search={{ search_query }}&per_page={{ per_page }}&sort_by=codigo_barras&order={% if sort_by == 'codigo_barras' and order == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none">
+                            CÓDIGO DE BARRAS
+                            {% if sort_by == 'codigo_barras' %}{% if order == 'asc' %}&uarr;{% else %}desc{% endif %}{% endif %}
                         </a>
                     </th>
                     <th class="text-end">
@@ -94,8 +88,7 @@
                     data-product-name="{{ product.nombre|default:"N/A" }}"
                     data-product-description="{{ product.descripcion|default:"Sin descripción" }}"
                     data-product-codigo1="{{ product.producto_id }}"
-                    data-product-codigo2="{{ product.codigo_alternativo|default:"N/A" }}"
-                    data-product-proveedor="{{ product.proveedor|default:"N/A" }}"
+                    data-product-codigo2="{% if product.codigo_barras %}{{ product.codigo_barras }}{% elif product.codigo_alternativo %}{{ product.codigo_alternativo }}{% else %}N/A{% endif %}"
                     data-product-fecha="{{ product.fecha_ingreso_producto|date:"Y-m-d"|default:"N/A" }}"
                     data-product-preciocompra="{{ product.formatted_precio_compra|default:"0" }}"
                     data-product-precioventa="{{ product.formatted_precio_venta|default:"0" }}"
@@ -103,8 +96,11 @@
                     data-product-stock="{{ product.stock }}">
                     <td class="product-name-cell" style="word-wrap: break-word;">{{ product.nombre|default:"N/A" }}</td>
                     <td>{{ product.producto_id }}</td>
-                    <td>{{ product.codigo_alternativo|default:"N/A" }}</td>
-                    <td>{{ product.proveedor|default:"N/A" }}</td>
+                    <td>
+                        {% if product.codigo_barras %}{{ product.codigo_barras }}
+                        {% elif product.codigo_alternativo %}{{ product.codigo_alternativo }}
+                        {% else %}N/A{% endif %}
+                    </td>
                     <td class="text-end">${{ product.formatted_precio_venta }}</td>
                     <td class="text-center">{{ product.stock }}</td>
                     <td class="text-center actions-cell" onclick="event.stopPropagation();">
@@ -191,8 +187,7 @@
                 <p><strong>Nombre:</strong> <span id="modalProductName"></span></p>
                 <p><strong>Descripción:</strong> <span id="modalProductDescription"></span></p>
                 <p><strong>Código 1:</strong> <span id="modalProductCodigo1"></span></p>
-                <p><strong>Código 2:</strong> <span id="modalProductCodigo2"></span></p>
-                <p><strong>Proveedor:</strong> <span id="modalProductProveedor"></span></p>
+                <p><strong>Código de Barras:</strong> <span id="modalProductCodigo2"></span></p>
                 <p><strong>Fecha de Ingreso:</strong> <span id="modalProductFecha"></span></p>
                 <p><strong>Precio de Compra:</strong> <span id="modalProductPrecioCompra"></span></p>
                 <p><strong>Precio de Venta:</strong> <span id="modalProductPrecioVenta"></span></p>
@@ -220,7 +215,6 @@ document.addEventListener('DOMContentLoaded', function() {
             var productDescription = this.getAttribute('data-product-description');
             var productCodigo1 = this.getAttribute('data-product-codigo1');
             var productCodigo2 = this.getAttribute('data-product-codigo2');
-            var productProveedor = this.getAttribute('data-product-proveedor');
             var productFecha = this.getAttribute('data-product-fecha');
             var productPrecioCompra = this.getAttribute('data-product-preciocompra');
             var productPrecioVenta = this.getAttribute('data-product-precioventa');
@@ -232,7 +226,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('modalProductDescription').textContent = productDescription;
             document.getElementById('modalProductCodigo1').textContent = productCodigo1;
             document.getElementById('modalProductCodigo2').textContent = productCodigo2;
-            document.getElementById('modalProductProveedor').textContent = productProveedor;
             document.getElementById('modalProductFecha').textContent = productFecha;
             document.getElementById('modalProductPrecioCompra').textContent = `$${productPrecioCompra}`;
             document.getElementById('modalProductPrecioVenta').textContent = `$${productPrecioVenta}`;

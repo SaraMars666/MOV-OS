@@ -156,6 +156,10 @@
                 </p>
               </div>
             </div>
+            <div class="mt-3 d-flex gap-2 flex-wrap">
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_pdf' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Descargar PDF</a>
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_docx' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Descargar Word</a>
+            </div>
           </div>
         </div>
         <!-- Comparativo Periodo Anterior -->

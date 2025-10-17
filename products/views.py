@@ -32,8 +32,7 @@ def product_management(request):
         'nombre': 'nombre',
         'descripcion': 'descripcion',
         'codigo1': 'producto_id',
-        'codigo2': 'codigo_alternativo',
-        'proveedor': 'proveedor',
+        'codigo_barras': 'codigo_barras',
         'fecha_ingreso': 'fecha_ingreso_producto',
         'precio_compra': 'precio_compra',
         'precio_venta': 'precio_venta',
@@ -145,7 +144,7 @@ def download_template(request):
 
     # Nuevos encabezados que incluyen los cálculos
     headers = [
-        'NOMBRE', 'DESCRIPCION', 'CODIGO 1', 'CODIGO 2', 'PROVEEDOR',
+        'NOMBRE', 'DESCRIPCION', 'CODIGO 1', 'CODIGO DE BARRAS',
         'FECHA DE INGRESO', 'PRECIO DE COMPRA', 'PRECIO DE VENTA',
         'PRECIO COMPRA SIN IVA', 'PRECIO VENTA SIN IVA',
         'GANANCIA NETA', 'PORCENTAJE DE GANANCIA'
@@ -228,8 +227,15 @@ def upload_products(request):
 
                     nombre = str(get_val('NOMBRE')).strip() if get_val('NOMBRE') is not None else ''
                     descripcion = str(get_val('DESCRIPCION')).strip() if get_val('DESCRIPCION') is not None else ''
-                    codigo_alternativo = str(get_val('CODIGO 2')).strip() if get_val('CODIGO 2') is not None else ''
-                    proveedor = str(get_val('PROVEEDOR')).strip() if get_val('PROVEEDOR') is not None else ''
+                    # Migración: tratar CODIGO 2 del archivo como código de barras principal cuando esté presente
+                    codigo_barras_excel = None
+                    if 'CODIGO DE BARRAS' in header_map:
+                        codigo_barras_excel = str(get_val('CODIGO DE BARRAS')).strip() if get_val('CODIGO DE BARRAS') is not None else ''
+                    # Compatibilidad hacia atrás: si sólo existe CODIGO 2, úsalo como código de barras
+                    if not codigo_barras_excel and 'CODIGO 2' in header_map:
+                        val_alt = get_val('CODIGO 2')
+                        codigo_barras_excel = str(val_alt).strip() if val_alt is not None else ''
+                    codigo_alternativo = None  # deprecado como entrada de import
 
                     fecha_ingreso_producto = None
                     fecha_raw = get_val('FECHA DE INGRESO')
@@ -248,8 +254,8 @@ def upload_products(request):
                     defaults = {
                         'nombre': nombre,
                         'descripcion': descripcion or None,
-                        'codigo_alternativo': codigo_alternativo or None,
-                        'proveedor': proveedor or None,
+                        'codigo_alternativo': None,
+                        'codigo_barras': (codigo_barras_excel or None),
                         'fecha_ingreso_producto': fecha_ingreso_producto,
                         'precio_compra': precio_compra,
                         'precio_venta': precio_venta,
@@ -281,7 +287,7 @@ def upload_products(request):
                                 setattr(prod, k, v)
                         if to_update:
                             Product.objects.bulk_update([p for p, _ in to_update], [
-                                'nombre','descripcion','codigo_alternativo','proveedor','fecha_ingreso_producto','precio_compra','precio_venta','permitir_venta_sin_stock'
+                                'nombre','descripcion','codigo_alternativo','codigo_barras','fecha_ingreso_producto','precio_compra','precio_venta','permitir_venta_sin_stock'
                             ], batch_size=500)
                             updated_count = len(to_update)
                 except Exception as e:
@@ -357,7 +363,7 @@ def export_products_to_excel(request):
 
     # Encabezados actualizados
     headers = [
-        'NOMBRE', 'DESCRIPCION', 'CODIGO 1', 'CODIGO 2', 'PROVEEDOR',
+        'NOMBRE', 'DESCRIPCION', 'CODIGO 1', 'CODIGO DE BARRAS',
         'FECHA DE INGRESO', 'PRECIO DE COMPRA', 'PRECIO DE VENTA',
         'PRECIO COMPRA SIN IVA', 'PRECIO VENTA SIN IVA',
         'GANANCIA NETA', 'PORCENTAJE DE GANANCIA'
@@ -370,8 +376,7 @@ def export_products_to_excel(request):
             product.nombre,
             product.descripcion,
             product.producto_id,
-            product.codigo_alternativo,
-            product.proveedor,
+            product.codigo_barras,
             product.fecha_ingreso_producto,
             product.formatted_precio_compra,
             product.formatted_precio_venta,

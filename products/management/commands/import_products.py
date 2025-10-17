@@ -86,8 +86,9 @@ class Command(BaseCommand):
             defaults = {
                 "nombre": str(get_val(row_values, "NOMBRE") or "").strip(),
                 "descripcion": (str(get_val(row_values, "DESCRIPCION") or "").strip() or None),
-                "codigo_alternativo": (str(get_val(row_values, "CODIGO 2") or "").strip() or None),
-                "proveedor": (str(get_val(row_values, "PROVEEDOR") or "").strip() or None),
+                # Migración: interpretar CODIGO 2 como código de barras por defecto
+                "codigo_barras": (str(get_val(row_values, "CODIGO DE BARRAS") or "") or str(get_val(row_values, "CODIGO 2") or "")).strip() or None,
+                "codigo_alternativo": None,
                 "fecha_ingreso_producto": self._norm_date(get_val(row_values, "FECHA DE INGRESO")),
                 "precio_compra": self._safe_decimal(get_val(row_values, "PRECIO DE COMPRA")),
                 "precio_venta": self._safe_decimal(get_val(row_values, "PRECIO DE VENTA")),
@@ -119,7 +120,7 @@ class Command(BaseCommand):
                 to_create.clear()
             if to_update:
                 Product.objects.bulk_update(to_update, [
-                    'nombre','descripcion','codigo_alternativo','proveedor','fecha_ingreso_producto','precio_compra','precio_venta','permitir_venta_sin_stock'
+                    'nombre','descripcion','codigo_alternativo','codigo_barras','fecha_ingreso_producto','precio_compra','precio_venta','permitir_venta_sin_stock'
                 ], batch_size=batch)
                 to_update.clear()
 

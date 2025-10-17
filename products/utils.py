@@ -13,10 +13,9 @@ def build_product_search_q(query: str) -> Q:
     Fields considered:
     - nombre
     - producto_id (Código 1)
+    - codigo_barras (preferido)
     - codigo_alternativo (Código 2)
-    - codigo_barras
     - descripcion
-    - proveedor
     Accent-insensitive variant for 'nombre'.
     """
     if not query:
@@ -25,9 +24,8 @@ def build_product_search_q(query: str) -> Q:
     return (
         Q(nombre__icontains=query) |
         Q(producto_id__icontains=query) |
-        Q(codigo_alternativo__icontains=query) |
         Q(codigo_barras__icontains=query) |
+        Q(codigo_alternativo__icontains=query) |
         Q(descripcion__icontains=query) |
-        Q(proveedor__icontains=query) |
         Q(nombre__icontains=norm)  # fallback normalized
     )

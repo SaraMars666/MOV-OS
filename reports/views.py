@@ -13,6 +13,11 @@ from django.http import HttpResponse
 from django.core.cache import cache
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.contrib.auth import get_user_model
+from django.template.loader import render_to_string
+import io
+from aspose.pdf import Document as PdfDocument
+from aspose.pdf import HtmlLoadOptions
+from docx import Document as DocxDocument
 
 User = get_user_model()
 
@@ -914,4 +919,127 @@ def limpiar_historial_caja(request):
         return JsonResponse({'success': True})
     else:
         return JsonResponse({'error': 'Método no permitido.'}, status=405)
+
+
+@login_required
+@user_passes_test(_is_admin, login_url='cashier_dashboard')
+def export_advanced_pdf(request):
+    """Exporta el reporte avanzado completo a PDF usando la misma data y un template html compacto."""
+    fecha_inicio_str = request.GET.get('fecha_inicio')
+    fecha_fin_str = request.GET.get('fecha_fin')
+    cajero_filter = request.GET.get('cajero','todos')
+    sucursal_filter = request.GET.get('sucursal','todos')
+    filtro_top = int(request.GET.get('top', 10) or 10)
+    try:
+        if fecha_inicio_str:
+            fecha_inicio = timezone.make_aware(datetime.datetime.strptime(fecha_inicio_str, '%Y-%m-%d'))
+        else:
+            fecha_inicio = timezone.now() - datetime.timedelta(days=30)
+    except ValueError:
+        fecha_inicio = timezone.now() - datetime.timedelta(days=30)
+    try:
+        if fecha_fin_str:
+            fecha_fin = timezone.make_aware(datetime.datetime.strptime(fecha_fin_str, '%Y-%m-%d')) + datetime.timedelta(days=1, seconds=-1)
+        else:
+            fecha_fin = timezone.now()
+    except ValueError:
+        fecha_fin = timezone.now()
+    from .analytics import compute_analytics
+    analytics = compute_analytics(fecha_inicio, fecha_fin, cajero_filter, sucursal_filter, limit_rentabilidad=50)
+    top_selling = list(
+        VentaDetalle.objects.filter(
+            venta__fecha__gte=fecha_inicio,
+            venta__fecha__lte=fecha_fin,
+            **({} if cajero_filter in (None, '', 'todos') else {'venta__empleado_id': cajero_filter}),
+            **({} if sucursal_filter in (None, '', 'todos') else {'venta__sucursal_id': sucursal_filter}),
+        ).values('producto__nombre').annotate(total_cantidad=Sum('cantidad')).order_by('-total_cantidad')[:filtro_top]
+    )
+    context = {
+        'fecha_inicio': fecha_inicio_str or (timezone.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'),
+        'fecha_fin': fecha_fin_str or timezone.now().strftime('%Y-%m-%d'),
+        'ingreso_total': "$" + format_clp(analytics['ingreso_total']),
+        'ingreso_total_sin_iva': "$" + format_clp(analytics['ingreso_total_sin_iva']),
+        'iva_total': "$" + format_clp(analytics['iva_total_calc']),
+        'ganancia_neta': "$" + format_clp(analytics['ganancia_neta']),
+        'ganancia_bruta': "$" + format_clp(analytics['ganancia_bruta']),
+        'costo_total': "$" + format_clp(analytics['costo_total']),
+        'num_transacciones': analytics['num_transacciones'],
+        'ticket_promedio': "$" + format_clp(analytics['ticket_promedio']),
+        'unidades_promedio': analytics['unidades_promedio'],
+        'ranking_cajeros': analytics['ranking_cajeros'],
+        'rentabilidad_productos': analytics['rentabilidad_productos'],
+        'top_selling_products': top_selling,
+    }
+    html = render_to_string('reports/export/advanced_pdf.html', context)
+    load_opts = HtmlLoadOptions()
+    pdf = PdfDocument(io.BytesIO(html.encode('utf-8')), load_opts)
+    out = io.BytesIO()
+    pdf.save(out)
+    out.seek(0)
+    resp = HttpResponse(out.read(), content_type='application/pdf')
+    resp['Content-Disposition'] = 'attachment; filename="reporte_avanzado.pdf"'
+    return resp
+
+
+@login_required
+@user_passes_test(_is_admin, login_url='cashier_dashboard')
+def export_advanced_docx(request):
+    """Exporta un resumen del reporte avanzado a DOCX."""
+    fecha_inicio_str = request.GET.get('fecha_inicio')
+    fecha_fin_str = request.GET.get('fecha_fin')
+    cajero_filter = request.GET.get('cajero','todos')
+    sucursal_filter = request.GET.get('sucursal','todos')
+    filtro_top = int(request.GET.get('top', 10) or 10)
+    try:
+        if fecha_inicio_str:
+            fecha_inicio = timezone.make_aware(datetime.datetime.strptime(fecha_inicio_str, '%Y-%m-%d'))
+        else:
+            fecha_inicio = timezone.now() - datetime.timedelta(days=30)
+    except ValueError:
+        fecha_inicio = timezone.now() - datetime.timedelta(days=30)
+    try:
+        if fecha_fin_str:
+            fecha_fin = timezone.make_aware(datetime.datetime.strptime(fecha_fin_str, '%Y-%m-%d')) + datetime.timedelta(days=1, seconds=-1)
+        else:
+            fecha_fin = timezone.now()
+    except ValueError:
+        fecha_fin = timezone.now()
+    from .analytics import compute_analytics
+    analytics = compute_analytics(fecha_inicio, fecha_fin, cajero_filter, sucursal_filter, limit_rentabilidad=50)
+    top_selling = list(
+        VentaDetalle.objects.filter(
+            venta__fecha__gte=fecha_inicio,
+            venta__fecha__lte=fecha_fin,
+            **({} if cajero_filter in (None, '', 'todos') else {'venta__empleado_id': cajero_filter}),
+            **({} if sucursal_filter in (None, '', 'todos') else {'venta__sucursal_id': sucursal_filter}),
+        ).values('producto__nombre').annotate(total_cantidad=Sum('cantidad')).order_by('-total_cantidad')[:filtro_top]
+    )
+    doc = DocxDocument()
+    doc.add_heading('Reporte Avanzado', 0)
+    doc.add_paragraph(f"Rango: {fecha_inicio.strftime('%Y-%m-%d')} a {fecha_fin.strftime('%Y-%m-%d')}")
+    doc.add_heading('KPIs', level=1)
+    doc.add_paragraph(f"Ingreso total: ${format_clp(analytics['ingreso_total'])}")
+    doc.add_paragraph(f"Venta sin IVA: ${format_clp(analytics['ingreso_total_sin_iva'])}")
+    doc.add_paragraph(f"IVA recaudado: ${format_clp(analytics['iva_total_calc'])}")
+    doc.add_paragraph(f"Ganancia neta: ${format_clp(analytics['ganancia_neta'])}")
+    doc.add_paragraph(f"Ganancia bruta: ${format_clp(analytics['ganancia_bruta'])}")
+    doc.add_paragraph(f"Costo total (CMV): ${format_clp(analytics['costo_total'])}")
+    doc.add_paragraph(f"Transacciones: {analytics['num_transacciones']}")
+    doc.add_paragraph(f"Ticket promedio: ${format_clp(analytics['ticket_promedio'])}")
+    doc.add_paragraph(f"Unidades promedio/venta: {analytics['unidades_promedio']}")
+    doc.add_heading('Top Productos', level=1)
+    for item in top_selling:
+        doc.add_paragraph(f"{item['producto__nombre']}: {item['total_cantidad']}")
+    doc.add_heading('Ranking de Cajeros', level=1)
+    for r in analytics['ranking_cajeros']:
+        doc.add_paragraph(f"{r['usuario']}: ventas={r['ventas_count']}, ingreso=${format_clp(r['ingreso_total'])}")
+    doc.add_heading('Rentabilidad de Productos (Top 50)', level=1)
+    for r in analytics['rentabilidad_productos']:
+        doc.add_paragraph(f"{r['producto']}: ganancia_neta=${format_clp(r['ganancia_neta_total'])} ({r['porcentaje_ganancia']}%)")
+    out = io.BytesIO()
+    doc.save(out)
+    out.seek(0)
+    resp = HttpResponse(out.read(), content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    resp['Content-Disposition'] = 'attachment; filename="reporte_avanzado.docx"'
+    return resp
 

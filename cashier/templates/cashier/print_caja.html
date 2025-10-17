@@ -24,9 +24,9 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="center bold">MOVOS</div>
+    <div class="center bold">Rochart Multiservicios digitales</div>
     <div class="center small">Reporte de Caja #{{ caja.id }}</div>
-    <div class="center small">{{ caja.apertura|date:"d/m/Y H:i" }}{% if caja.cierre %} - {{ caja.cierre|date:"d/m/Y H:i" }}{% endif %}</div>
+  <div class="center small">{{ caja.apertura|localtime|date:"d/m/Y H:i" }}{% if caja.cierre %} - {{ caja.cierre|localtime|date:"d/m/Y H:i" }}{% endif %}</div>
     <div class="line"></div>
     <div class="small">Cajero: {{ caja.vendedor.username }}</div>
     <div class="small">Sucursal: {{ caja.sucursal.nombre }}</div>

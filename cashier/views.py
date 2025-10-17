@@ -328,8 +328,8 @@ def buscar_producto(request):
     base_qs = Product.objects.filter(
         Q(nombre__icontains=query) |
         Q(producto_id__icontains=query) |
-        Q(codigo_alternativo__icontains=query) |
-        Q(codigo_barras__icontains=query)
+        Q(codigo_barras__icontains=query) |
+        Q(codigo_alternativo__icontains=query)
     )
     # Mostrar todos los productos que coincidan; el frontend indicará si se pueden agregar o no
     productos = base_qs

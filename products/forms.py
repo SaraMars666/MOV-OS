@@ -11,7 +11,7 @@ class ProductForm(forms.ModelForm):
         model = Product
         fields = [
             'nombre', 'descripcion', 'producto_id', 'codigo_alternativo',
-            'proveedor', 'fecha_ingreso_producto', 'precio_compra', 'precio_venta',
+            'fecha_ingreso_producto', 'precio_compra', 'precio_venta',
             'cantidad', 'stock', 'codigo_barras', 'permitir_venta_sin_stock', 'sucursal'
         ]
         widgets = {
@@ -19,7 +19,6 @@ class ProductForm(forms.ModelForm):
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'producto_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID único del producto'}),
             'codigo_alternativo': forms.TextInput(attrs={'class': 'form-control'}),
-            'proveedor': forms.TextInput(attrs={'class': 'form-control'}),
             'fecha_ingreso_producto': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'precio_compra': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'precio_venta': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
@@ -45,7 +44,7 @@ class ProductForm(forms.ModelForm):
         self.fields['descripcion'].label = 'DESCRIPCIÓN'
         self.fields['producto_id'].label = 'CÓDIGO 1'
         self.fields['codigo_alternativo'].label = 'CÓDIGO 2'
-        self.fields['proveedor'].label = 'PROVEEDOR'
+        # Ajustes de etiquetas
         self.fields['fecha_ingreso_producto'].label = 'FECHA DE INGRESO'
         self.fields['precio_compra'].label = 'PRECIO DE COMPRA'
         self.fields['precio_venta'].label = 'PRECIO DE VENTA'

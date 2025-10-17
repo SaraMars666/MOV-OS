@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Avanzado</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; }
+    h1, h2, h3 { margin: 0.3rem 0; }
+    table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    .muted { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Reporte Avanzado</h1>
+  <p class="muted">Rango: {{ fecha_inicio }} a {{ fecha_fin }}</p>
+
+  <h2>KPIs</h2>
+  <ul>
+    <li>Ingreso total: {{ ingreso_total }}</li>
+    <li>Venta sin IVA: {{ ingreso_total_sin_iva }}</li>
+    <li>IVA recaudado: {{ iva_total }}</li>
+    <li>Ganancia neta: {{ ganancia_neta }}</li>
+    <li>Ganancia bruta: {{ ganancia_bruta }}</li>
+    <li>Costo total (CMV): {{ costo_total }}</li>
+    <li>Transacciones: {{ num_transacciones }}</li>
+    <li>Ticket promedio: {{ ticket_promedio }}</li>
+    <li>Unidades promedio/venta: {{ unidades_promedio }}</li>
+  </ul>
+
+  <h2>Top Productos</h2>
+  <table>
+    <thead>
+      <tr><th>Producto</th><th>Cantidad</th></tr>
+    </thead>
+    <tbody>
+      {% for item in top_selling_products %}
+      <tr>
+        <td>{{ item.producto__nombre }}</td>
+        <td>{{ item.total_cantidad }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">Sin datos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Ranking de Cajeros</h2>
+  <table>
+    <thead>
+      <tr><th>Usuario</th><th>Ventas</th><th>Ingreso</th></tr>
+    </thead>
+    <tbody>
+      {% for r in ranking_cajeros %}
+      <tr>
+        <td>{{ r.usuario }}</td>
+        <td>{{ r.ventas_count }}</td>
+        <td>${{ r.ingreso_total|floatformat:0 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="muted">Sin datos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Rentabilidad de Productos (Top 50)</h2>
+  <table>
+    <thead>
+      <tr><th>Producto</th><th>Ganancia Neta</th><th>% Ganancia</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rentabilidad_productos %}
+      <tr>
+        <td>{{ r.producto }}</td>
+        <td>${{ r.ganancia_neta_total|floatformat:0 }}</td>
+        <td>{{ r.porcentaje_ganancia }}%</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="muted">Sin datos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

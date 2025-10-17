@@ -189,7 +189,7 @@ def main():
         'descripcion': 'desc',
         'producto_id': new_sku,
         'codigo_alternativo': 'ALT1',
-        'proveedor': 'Prov',
+    # proveedor eliminado del modelo
         'fecha_ingreso_producto': '2025-01-01',
         'precio_compra': '100',
         'precio_venta': '250',

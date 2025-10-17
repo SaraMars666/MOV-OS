@@ -65,7 +65,6 @@ class Product(models.Model):
     descripcion = models.TextField(verbose_name="Descripción", blank=True, null=True)
     producto_id = models.CharField(max_length=255, unique=True, verbose_name="Código 1")
     codigo_alternativo = models.CharField(max_length=255, verbose_name="Código 2", blank=True, null=True)
-    proveedor = models.CharField(max_length=255, verbose_name="Proveedor", blank=True, null=True)
     fecha_ingreso_producto = models.DateField(verbose_name="Fecha de Ingreso", blank=True, null=True)
     precio_compra = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio de Compra", default=Decimal('0.00'))
     precio_venta = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio de Venta", default=Decimal('0.00'))

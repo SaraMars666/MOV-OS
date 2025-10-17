@@ -33,11 +33,11 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="center bold">MOVOS</div>
+    <div class="center bold">Rochart Multiservicios digitales</div>
     {% if sucursal %}<div class="center small">Sucursal: {{ sucursal.nombre }}</div>{% endif %}
     <div class="center small">Venta #{{ venta.id }}</div>
   {% if venta.caja %}<div class="center small">Caja #{{ venta.caja.id }}</div>{% endif %}
-    <div class="center small">{{ venta.fecha|date:"d/m/Y H:i" }}</div>
+  <div class="center small">{{ venta.fecha|localtime|date:"d/m/Y H:i" }}</div>
     <div class="line"></div>
 
     <div class="small">Cajero: {{ venta.empleado.username }}</div>

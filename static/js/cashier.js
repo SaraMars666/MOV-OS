@@ -342,6 +342,43 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "X-CSRFToken": getCSRFToken() }
             });
             confirmModal.hide();
+            // Resetear completamente la UI para la siguiente venta
+            try {
+                // Limpiar campos de entrada
+                if (searchInput) searchInput.value = "";
+                if (barcodeInput) barcodeInput.value = "";
+                if (cantidadPagadaInput) cantidadPagadaInput.value = "";
+                if (numeroTransaccionInput) numeroTransaccionInput.value = "";
+                if (bancoInput) bancoInput.value = "";
+                // Restablecer forma de pago y tipo de venta a valores por defecto
+                tipoVenta = "boleta";
+                saleTypeInput.value = "boleta";
+                document.querySelectorAll("[data-sale-type]").forEach(b => {
+                    b.classList.remove("btn-primary", "active");
+                    b.classList.add("btn-outline-primary");
+                    if (b.getAttribute("data-sale-type") === "boleta") {
+                        b.classList.add("btn-primary", "active");
+                    }
+                });
+                formaPago = "efectivo";
+                paymentHiddenInput.value = "efectivo";
+                document.querySelectorAll("[data-payment-method]").forEach(b => {
+                    b.classList.remove("btn-primary", "active");
+                    b.classList.add("btn-outline-primary");
+                    if (b.getAttribute("data-payment-method") === "efectivo") {
+                        b.classList.add("btn-primary", "active");
+                    }
+                });
+                transactionInfoContainer.style.display = "none";
+                bancoInfoContainer.style.display = "none";
+                vueltoElement.textContent = "$0";
+                // Borrar resultados de búsqueda y mensaje de carrito vacío
+                if (resultsList) resultsList.innerHTML = "";
+                cartItemsContainer.innerHTML = `<tr><td colspan="4" class="text-center">No hay productos en el carrito.</td></tr>`;
+                totalPriceElement.textContent = `$0`;
+                const mobileTotal = document.getElementById('total-price-mobile');
+                if (mobileTotal) mobileTotal.textContent = '0.00';
+            } catch (e) { console.warn('No se pudo resetear completamente la UI:', e); }
             // Abrir el reporte en una ventana pequeña (modal) dentro de la vista de cajero
             if (data.reporte_url) {
                 try {

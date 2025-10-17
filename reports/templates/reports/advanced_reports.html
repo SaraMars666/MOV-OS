@@ -41,9 +41,8 @@
       <!-- Contenido Principal -->
       <main class="col-md-9">
         <!-- Cabecera: acciones (Exportar / Volver) -->
-        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3 gap-2">
-          <h3 class="mb-0">Reportes Avanzados</h3>
-          <div class="d-flex gap-2">
+        <div class="d-flex justify-content-end mb-3">
+          <div class="d-flex gap-2 flex-wrap">
             <div class="btn-group" role="group" aria-label="Exportaciones">
               <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_pdf' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Exportar PDF</a>
               <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:export_advanced_docx' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&cajero={{ cajero_actual }}&sucursal={{ sucursal_actual }}&top={{ filtro_top_actual }}" target="_blank">Exportar Word</a>

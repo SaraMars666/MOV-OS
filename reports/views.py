@@ -15,8 +15,16 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
 import io
-from aspose.pdf import Document as PdfDocument
-from aspose.pdf import HtmlLoadOptions
+# aspose-pdf no está disponible en algunas plataformas (p.ej., ARM/OrangePi).
+# Evitar fallo de import en inicio: intentar importar y degradar con bandera.
+try:
+    from aspose.pdf import Document as PdfDocument  # type: ignore
+    from aspose.pdf import HtmlLoadOptions  # type: ignore
+    ASPose_AVAILABLE = True
+except Exception:
+    PdfDocument = None  # type: ignore
+    HtmlLoadOptions = None  # type: ignore
+    ASPose_AVAILABLE = False
 from docx import Document as DocxDocument
 
 User = get_user_model()
@@ -925,6 +933,16 @@ def limpiar_historial_caja(request):
 @user_passes_test(_is_admin, login_url='cashier_dashboard')
 def export_advanced_pdf(request):
     """Exporta el reporte avanzado completo a PDF usando la misma data y un template html compacto."""
+    # Fallback amigable cuando aspose-pdf no está instalado (p.ej., ARM)
+    if not ASPose_AVAILABLE:
+        return HttpResponse(
+            (
+                "Exportación a PDF no disponible en este servidor (falta dependencia aspose-pdf). "
+                "Por favor use la opción 'Exportar Word'."
+            ),
+            content_type="text/plain",
+            status=501,
+        )
     fecha_inicio_str = request.GET.get('fecha_inicio')
     fecha_fin_str = request.GET.get('fecha_fin')
     cajero_filter = request.GET.get('cajero','todos')

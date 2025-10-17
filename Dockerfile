@@ -17,6 +17,8 @@ COPY requirements.txt ./
 # and handle non-UTF8 encodings (e.g., UTF-16) gracefully.
 RUN python - <<'PY'
 from pathlib import Path
+
+# Read requirements with robust encoding fallbacks
 data = Path('requirements.txt').read_bytes()
 text = None
 for enc in ('utf-8', 'utf-16', 'utf-16-le', 'utf-16-be', 'latin-1'):
@@ -27,12 +29,38 @@ for enc in ('utf-8', 'utf-16', 'utf-16-le', 'utf-16-be', 'latin-1'):
         pass
 if text is None:
     text = data.decode('utf-8', 'ignore')
-lines = []
-for line in text.splitlines():
-    if line.strip().startswith('TA-Lib'):
+
+# Exclude heavy/unnecessary packages for the runtime image to avoid build failures on slim images.
+# Keep only libs used by the POS app (Django, psycopg2, openpyxl, aspose-pdf, python-docx, whitenoise, etc.).
+EXCLUDE_PREFIXES = (
+    'TA-Lib',
+    # Data-science stack (not used by the POS app at runtime)
+    'numpy', 'pandas', 'scipy', 'scikit-learn', 'matplotlib', 'seaborn', 'Cython',
+    # Trading libs (not used in app runtime)
+    'yfinance', 'binance-connector', 'binance-futures-connector',
+    'unicorn-binance-rest-api', 'unicorn-binance-websocket-api', 'unicorn-fy',
+    # Diagram/graph extras
+    'diagrams', 'graphviz',
+    # PPTX and alt doc renderers (not required; keep python-docx only)
+    'python-pptx', 'pydocx',
+)
+
+def should_exclude(line: str) -> bool:
+    s = line.strip()
+    if not s or s.startswith('#'):
+        return False
+    low = s.lower()
+    for p in EXCLUDE_PREFIXES:
+        if low.startswith(p.lower() + '==') or low.startswith(p.lower() + ' @') or low == p.lower():
+            return True
+    return False
+
+kept = []
+for raw in text.splitlines():
+    if should_exclude(raw):
         continue
-    lines.append(line)
-Path('requirements.filtered.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    kept.append(raw)
+Path('requirements.filtered.txt').write_text('\n'.join(kept) + '\n', encoding='utf-8')
 PY
 RUN pip install --no-cache-dir -r requirements.filtered.txt
 

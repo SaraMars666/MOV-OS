@@ -249,7 +249,11 @@ def cerrar_caja(request):
         ventas_debito = ventas_qs.filter(forma_pago='debito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         ventas_credito = ventas_qs.filter(forma_pago='credito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         vuelto_total = ventas_qs.aggregate(total=Sum('vuelto_entregado'))['total'] or Decimal('0.00')
-        efectivo_final = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo - vuelto_total
+        # Nota: el efectivo final no debe restar el vuelto. Para una venta en efectivo,
+        # el neto que queda en caja es exactamente el total de la venta, independientemente
+        # de cuánto se recibió y cuánto vuelto se entregó (cliente_paga - vuelto = total).
+        # Por lo tanto, el efectivo final correcto es:
+        efectivo_final = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo
         # Persistir estado y métricas básicas
         caja.cierre = fecha_fin
         caja.estado = 'cerrada'
@@ -290,7 +294,9 @@ def detalle_caja(request, caja_id):
     ventas_credito = ventas_qs.filter(forma_pago='credito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     ventas_transferencia = ventas_qs.filter(forma_pago='transferencia').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     vuelto_total = ventas_qs.aggregate(total=Sum('vuelto_entregado'))['total'] or Decimal('0.00')
-    efectivo_final_calc = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo - vuelto_total
+    # Igual que en el cierre: no restar 'vuelto_total' ya que el total en efectivo
+    # ya representa el neto que queda en caja por cada venta.
+    efectivo_final_calc = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo
     
     contexto = {
         'caja': caja,

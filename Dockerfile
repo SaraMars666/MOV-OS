@@ -11,14 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-COPY requirements.txt ./
-# 1) Actualiza pip para evitar fallos de instalación en arquitecturas ARM
-# 2) Filtra paquetes pesados/no usados (DS/trading) y TA-Lib (wheel de Windows)
-# 3) Asegura instalación explícita de dependencias core del proyecto (Django, gunicorn, etc.)
+# Install dependencies (curated list compatible con ARM). Evitamos requirements.txt por encoding/paquetes pesados.
 RUN python -m pip install --upgrade pip setuptools wheel \
-    && grep -Ev "^(TA-Lib|numpy|pandas|scipy|scikit-learn|matplotlib|seaborn|Cython|yfinance|binance-connector|binance-futures-connector|unicorn-binance-rest-api|unicorn-binance-websocket-api|unicorn-fy|diagrams|graphviz|python-pptx|pydocx)\b" requirements.txt > requirements.filtered.txt \
-    && python -m pip install --no-cache-dir -r requirements.filtered.txt \
     && python -m pip install --no-cache-dir \
         Django==5.0.7 \
         gunicorn==23.0.0 \
@@ -28,7 +22,12 @@ RUN python -m pip install --upgrade pip setuptools wheel \
         djangorestframework-simplejwt==5.3.1 \
         openpyxl==3.1.5 \
         python-docx==1.1.2 \
-        aspose-pdf==25.6.0
+        pillow==11.3.0 \
+        pytz==2024.1 \
+        tzdata==2024.1 \
+        requests==2.32.3 \
+        ujson==5.10.0 \
+        simplejson==3.19.2
 
 # Project files
 COPY . .

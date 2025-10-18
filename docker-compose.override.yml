@@ -1,0 +1,21 @@
+services:
+  web:
+    environment:
+      # Asegura acceso por IP LAN y Quick Tunnel
+      ALLOWED_HOSTS: "localhost,127.0.0.1,192.168.1.22,.trycloudflare.com"
+      CSRF_TRUSTED_ORIGINS: "http://localhost:8000,http://192.168.1.22,https://*.trycloudflare.com"
+      LAN_HOST: "192.168.1.22"
+
+volumes:
+  pgdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/movos-data/pgdata
+  static_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/movos-data/staticfiles

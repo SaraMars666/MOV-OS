@@ -24,7 +24,7 @@ else:
         h.strip()
         for h in os.environ.get(
             'ALLOWED_HOSTS',
-            'localhost,127.0.0.1,::1,testserver,.koyeb.app,.onrender.com'
+            'localhost,127.0.0.1,::1,testserver,.koyeb.app,.onrender.com,.trycloudflare.com'
         ).split(',')
         if h.strip()
     ]
@@ -37,6 +37,14 @@ CSRF_TRUSTED_ORIGINS = [
     ).split(',')
     if o.strip()
 ]
+# Añadir soporte por defecto para Quick Tunnel y LAN opcional
+_extra_csrf = []
+_extra_csrf.append('https://*.trycloudflare.com')
+lan_host = os.environ.get('LAN_HOST')  # e.g., 192.168.1.22
+if lan_host:
+    _extra_csrf.extend([f'http://{lan_host}', f'http://{lan_host}:8000'])
+extra_env = [o.strip() for o in os.environ.get('CSRF_TRUST_EXTRA', '').split(',') if o.strip()]
+CSRF_TRUSTED_ORIGINS.extend([e for e in (_extra_csrf + extra_env) if e and e not in CSRF_TRUSTED_ORIGINS])
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -59,7 +67,7 @@ AUTH_USER_MODEL = 'auth_app.User'
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',  # Desactivado
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

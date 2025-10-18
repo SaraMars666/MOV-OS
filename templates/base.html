@@ -12,6 +12,13 @@
     {% block extra_styles %}{% endblock %}
 </head>
 <body>
+        <!-- Toast container for Django messages -->
+        <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1100;"></div>
+        {% if messages %}
+            <div id="django-messages" data-messages='[
+                {% for message in messages %}{"level":"{{ message.tags|default:"info" }}","text":"{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}
+            ]' hidden></div>
+        {% endif %}
     {% if request.user.is_authenticated %}
         {% if request.user.is_superuser %}
             <!-- Navbar para admin: ahora se ve negra -->
@@ -69,6 +76,36 @@
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Render Django messages as Bootstrap toasts using data attribute to avoid template tags in JS
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('toast-container');
+            const holder = document.getElementById('django-messages');
+            if (!holder) return;
+            let msgs = [];
+            try { msgs = JSON.parse(holder.getAttribute('data-messages') || '[]'); } catch (e) { msgs = []; }
+            const mapLevel = (lvl) => {
+                if (!lvl) return 'secondary';
+                if (lvl.includes('error')) return 'danger';
+                if (lvl.includes('warning')) return 'warning';
+                if (lvl.includes('success')) return 'success';
+                if (lvl.includes('info')) return 'info';
+                return 'secondary';
+            };
+            msgs.forEach(m => {
+                const t = document.createElement('div');
+                t.className = `toast align-items-center text-white bg-${mapLevel(m.level)} border-0`;
+                t.setAttribute('role', 'alert');
+                t.innerHTML = '<div class="d-flex">\
+                    <div class="toast-body"></div>\
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>\
+                </div>';
+                t.querySelector('.toast-body').textContent = m.text;
+                container.appendChild(t);
+                new bootstrap.Toast(t, { delay: 4000 }).show();
+            });
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

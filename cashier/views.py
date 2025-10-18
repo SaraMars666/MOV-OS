@@ -35,28 +35,73 @@ def format_clp(value):
     except Exception:
         return value
 
+# ==== Helper para resolver la caja abierta actual de forma consistente ====
+def _parse_body_json(request):
+    try:
+        if request.body:
+            return json.loads(request.body)
+    except Exception:
+        pass
+    return {}
+
+def get_current_caja(request):
+    """
+    Resuelve la caja actual siguiendo este orden:
+    1) caja_id en GET
+    2) caja_id en body JSON (POST/AJAX)
+    3) caja_id en sesión
+    4) primera caja abierta del usuario (vendedor=request.user)
+
+    Valida permisos: si no es superusuario, la caja debe pertenecer al usuario.
+    Retorna instancia de AperturaCierreCaja o None si no aplica.
+    """
+    caja_id = request.GET.get('caja_id')
+    if not caja_id and request.method in ("POST", "PUT", "PATCH"):
+        data = _parse_body_json(request)
+        caja_id = data.get('caja_id') or caja_id
+    if not caja_id:
+        caja_id = request.session.get('caja_id')
+
+    caja = None
+    if caja_id:
+        try:
+            caja = AperturaCierreCaja.objects.get(id=caja_id)
+            if caja.estado != 'abierta':
+                caja = None
+        except AperturaCierreCaja.DoesNotExist:
+            caja = None
+    if not caja:
+        caja = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+
+    if not caja:
+        return None
+    # Permisos: no superusuario solo accede a su propia caja
+    if not request.user.is_superuser and caja.vendedor_id != request.user.id:
+        return None
+    return caja
+
 @transaction.atomic
 @login_required
 @ensure_csrf_cookie
 def cashier_dashboard(request):
-    caja_id = request.GET.get('caja_id')
-    caja_abierta = None
-    if caja_id:
-        try:
-            caja_abierta = AperturaCierreCaja.objects.get(id=caja_id)
-            # Si no es admin, asegurar que es su propia caja
-            if not request.user.is_superuser and caja_abierta.vendedor_id != request.user.id:
-                return HttpResponseForbidden('No tienes permiso para acceder a esta caja.')
-            if caja_abierta.estado != 'abierta':
-                caja_abierta = None
-        except AperturaCierreCaja.DoesNotExist:
-            caja_abierta = None
-    if not caja_abierta:
-        caja_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+    caja_abierta = get_current_caja(request)
     if not caja_abierta:
         return redirect('abrir_caja')
+    # Persistir selección en sesión para que endpoints AJAX usen la misma caja
+    prev_caja_id = request.session.get('caja_id')
+    request.session['caja_id'] = caja_abierta.id
+    # Si cambió la caja o no existía, reiniciar carrito para evitar arrastres
+    if prev_caja_id != caja_abierta.id or request.session.get('carrito') is None:
+        request.session['carrito'] = []
+    request.session.modified = True
     if request.method == 'GET':
         # Mostrar productos de la sucursal de la caja abierta (vista inicial)
+        # Resetear carrito para iniciar una nueva venta sin arrastrar ítems previos
+        try:
+            request.session['carrito'] = []
+            request.session.modified = True
+        except Exception:
+            pass
         productos = Product.objects.filter(sucursal=caja_abierta.sucursal)
         return render(request, 'cashier/cashier.html', {
             'productos': productos,
@@ -178,17 +223,14 @@ def cerrar_caja(request):
     if request.method != "POST":
         return JsonResponse({'error': 'Método no permitido.'}, status=405)
     try:
-        data = {}
-        if request.body:
-            try:
-                data = json.loads(request.body)
-            except json.JSONDecodeError:
-                data = {}
+        data = _parse_body_json(request)
         caja_id = data.get('caja_id')
+        if not caja_id:
+            caja_id = request.session.get('caja_id')
         if caja_id:
             caja = get_object_or_404(AperturaCierreCaja, id=caja_id)
-            if not (request.user.is_superuser or caja.vendedor_id == request.user.id):
-                return HttpResponseForbidden('No tienes permiso para cerrar esta caja.')
+            if not (request.user.is_superuser or request.user.is_staff or caja.vendedor_id == request.user.id):
+                return JsonResponse({'error': 'No tienes permiso para cerrar esta caja.'}, status=403)
         else:
             caja = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
             if not caja:
@@ -218,6 +260,12 @@ def cerrar_caja(request):
         caja.vuelto_entregado = vuelto_total
         caja.efectivo_final = efectivo_final
         caja.save()
+        # Limpiar carrito al cerrar la caja
+        try:
+            request.session['carrito'] = []
+            request.session.modified = True
+        except Exception:
+            pass
         detalle_url = reverse('detalle_caja', args=[caja.id])
         return JsonResponse({'success': True, 'detalle_url': detalle_url})
     except Exception as e:
@@ -322,8 +370,8 @@ def buscar_producto(request):
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'productos': []})
-    # Filtrar por sucursal de la caja abierta del usuario
-    caja_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+    # Resolver caja de forma consistente
+    caja_abierta = get_current_caja(request)
     # Base query por texto
     base_qs = Product.objects.filter(
         Q(nombre__icontains=query) |
@@ -444,7 +492,7 @@ def ajustar_cantidad(request):
 
 @login_required
 def agregar_al_carrito(request):
-    caja_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
+    caja_abierta = get_current_caja(request)
     if not caja_abierta:
         return JsonResponse({'error': 'No tienes una caja abierta.'}, status=403)
     if request.method != "POST":
@@ -469,7 +517,11 @@ def agregar_al_carrito(request):
         found = False
         for item in carrito:
             if item['producto_id'] == producto.id:
-                item['cantidad'] = cantidad
+                # Si ya existe en el carrito, incrementar en 1
+                try:
+                    item['cantidad'] = int(item.get('cantidad', 0)) + 1
+                except Exception:
+                    item['cantidad'] = 1
                 found = True
                 break
         if not found:
@@ -542,22 +594,19 @@ def abrir_caja(request):
                 # Regla 1: Sólo una caja abierta por sucursal
                 existente_en_sucursal = AperturaCierreCaja.objects.filter(sucursal=sucursal, estado='abierta').first()
                 if existente_en_sucursal:
-                    messages.warning(request, f"Ya existe una caja abierta en la sucursal {sucursal.nombre} (Caja #{existente_en_sucursal.id}).")
-                    # Si el usuario es admin, redirigir a cashier usando esa caja
-                    if request.user.is_superuser:
-                        return redirect(f"{reverse('cashier_dashboard')}?caja_id={existente_en_sucursal.id}")
-                    # Usuario no admin: redirigir al cashier de su propia caja abierta si la tiene o bloquear
-                    propia_abierta = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
-                    if propia_abierta:
-                        return redirect('cashier_dashboard')
-                    return redirect('abrir_caja')
+                    # Mostrar aviso y quedarse en la vista de apertura para evitar errores dentro del cajero
+                    messages.warning(request, f"No se puede abrir caja: ya existe una caja abierta en la sucursal {sucursal.nombre} (Caja #{existente_en_sucursal.id}).")
+                    context = {'sucursales': sucursales}
+                    return render(request, 'cashier/abrir_caja.html', context)
 
                 # Regla 2: Usuario no admin sólo puede tener una caja abierta total
                 if not request.user.is_superuser:
                     abierta_usuario = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
                     if abierta_usuario:
                         messages.info(request, f"Ya tienes una caja abierta (Caja #{abierta_usuario.id}).")
-                        return redirect('cashier_dashboard')
+                        # No entrar al cajero aquí; mostrar aviso y permanecer
+                        context = {'sucursales': sucursales}
+                        return render(request, 'cashier/abrir_caja.html', context)
                 caja = AperturaCierreCaja.objects.create(
                     vendedor=request.user,
                     sucursal=sucursal,

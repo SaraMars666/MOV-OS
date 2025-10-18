@@ -47,6 +47,10 @@
             </div>
             {% endif %}
     </div>
+    <!-- Exponer ID de caja actual para las solicitudes AJAX -->
+    {% if caja_abierta %}
+    <meta name="current-caja-id" content="{{ caja_abierta.id }}" />
+    {% endif %}
 
     <div id="alertPlaceholder" class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1050; width: 350px;"></div>
     
@@ -224,7 +228,7 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="{% static 'js/cashier.js' %}?v=2"></script>
+    <script src="{% static 'js/cashier.js' %}?v=3"></script>
             <script>
                 // Add bottom padding when mobile action bar is present on small screens only
                 function updateMobilePadding(){

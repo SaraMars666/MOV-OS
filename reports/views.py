@@ -745,11 +745,15 @@ def export_rentabilidad_csv(request):
             pct = (d['ganancia'] / d['ingreso'] * Decimal('100')).quantize(Decimal('0.01'))
         rows.append([d['producto'], d['cantidad'], d['ingreso'], d['costo'], d['ganancia'], pct])
     rows.sort(key=lambda r: r[4], reverse=True)
+    import csv
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename=rentabilidad_productos.csv'
-    response.write('Producto,Cantidad,Ingreso Neto,Costo Neto,Ganancia Neta,% Ganancia\n')
+    # BOM para que Excel detecte UTF-8 correctamente
+    response.write('\ufeff')
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['Producto','Cantidad','Ingreso Neto','Costo Neto','Ganancia Neta','% Ganancia'])
     for r in rows:
-        response.write(f"{r[0]},{r[1]},{r[2]},{r[3]},{r[4]},{r[5]}\n")
+        writer.writerow([r[0], r[1], r[2], r[3], r[4], r[5]])
     return response
 
 @login_required
@@ -786,11 +790,14 @@ def export_ranking_cajeros_csv(request):
         ticket_prom = (d['ingreso'] / d['ventas']).quantize(Decimal('0.01')) if d['ventas'] else Decimal('0.00')
         rows.append([d['usuario'], d['ventas'], d['ingreso'], ticket_prom])
     rows.sort(key=lambda r: r[2], reverse=True)
+    import csv
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename=ranking_cajeros.csv'
-    response.write('Usuario,Ventas,Ingreso Total,Ticket Promedio\n')
+    response.write('\ufeff')
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['Usuario','Ventas','Ingreso Total','Ticket Promedio'])
     for r in rows:
-        response.write(f"{r[0]},{r[1]},{r[2]},{r[3]}\n")
+        writer.writerow([r[0], r[1], r[2], r[3]])
     return response
 
 @login_required
@@ -818,11 +825,14 @@ def export_daily_series_csv(request):
     from .analytics import compute_analytics
     analytics = compute_analytics(fecha_inicio, fecha_fin, cajero_filter, sucursal_filter)
     rows = analytics['daily_chart']
+    import csv
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename=serie_diaria.csv'
-    response.write('Dia,Ingreso,GananciaNeta\n')
+    response.write('\ufeff')
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['Dia','Ingreso','GananciaNeta'])
     for r in rows:
-        response.write(f"{r['day']},{r['ingreso']},{r['ganancia_neta']}\n")
+        writer.writerow([r['day'], r['ingreso'], r['ganancia_neta']])
     return response
 
 @login_required
@@ -850,11 +860,14 @@ def export_branch_comparison_csv(request):
     from .analytics import compute_analytics
     analytics = compute_analytics(fecha_inicio, fecha_fin, cajero_filter, sucursal_filter)
     rows = analytics['branch_comparison']
+    import csv
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename=comparacion_sucursal.csv'
-    response.write('Sucursal,Ingreso,GananciaNeta\n')
+    response.write('\ufeff')
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['Sucursal','Ingreso','GananciaNeta'])
     for r in rows:
-        response.write(f"{r['sucursal']},{r['ingreso']},{r['ganancia_neta']}\n")
+        writer.writerow([r['sucursal'], r['ingreso'], r['ganancia_neta']])
     return response
 
 @login_required

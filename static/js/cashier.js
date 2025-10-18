@@ -24,6 +24,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let carrito = new Map();
     let totalCarrito = 0;
 
+    // Leer caja_id expuesto por la plantilla (meta en cashier.html)
+    const cajaMeta = document.querySelector('meta[name="current-caja-id"]');
+    const cajaId = cajaMeta ? cajaMeta.getAttribute('content') : null;
+
     function formatChileanCurrency(number) {
         return number.toLocaleString("es-CL", { maximumFractionDigits: 0 });
     }
@@ -54,17 +58,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getCSRFToken() {
-        // Prefer meta/template-provided token to match server-side token for this path
-        const meta = document.querySelector('meta[name="csrf-token"], meta[name="csrfmiddlewaretoken"], input[name="csrfmiddlewaretoken"]');
-        if (meta && (meta.content || meta.value)) return meta.content || meta.value;
-        // Fallback: pick the LAST csrftoken cookie
+        // Prefer cookie token (required by Django double submit), fallback to meta
         const cookies = document.cookie ? document.cookie.split(';') : [];
-        let lastToken = null;
         for (const part of cookies) {
             const [rawName, ...rest] = part.trim().split('=');
-            if (rawName === 'csrftoken') lastToken = decodeURIComponent(rest.join('='));
+            if (rawName === 'csrftoken') return decodeURIComponent(rest.join('='));
         }
-        return lastToken || "";
+        const meta = document.querySelector('meta[name="csrf-token"], meta[name="csrfmiddlewaretoken"], input[name="csrfmiddlewaretoken"]');
+        if (meta && (meta.content || meta.value)) return meta.content || meta.value;
+        return "";
     }
 
     function calcularVuelto() {
@@ -92,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function searchProducts(query) {
         try {
-            const res = await fetch(`/cashier/buscar-producto/?q=${query}`);
+            const res = await fetch(`/cashier/buscar-producto/?q=${encodeURIComponent(query)}${cajaId ? `&caja_id=${encodeURIComponent(cajaId)}` : ''}`);
             const data = await res.json();
             resultsList.innerHTML = "";
             if (data.productos.length === 0) {
@@ -150,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Content-Type": "application/json",
                     "X-CSRFToken": getCSRFToken()
                 },
-                body: JSON.stringify({ producto_id: productoId })
+                body: JSON.stringify({ producto_id: productoId, caja_id: cajaId })
             });
             const text = await response.text();
             console.log("Respuesta del servidor:", text);
@@ -217,23 +219,48 @@ document.addEventListener("DOMContentLoaded", () => {
         const targetButton = e.target.closest("button");
         if (!targetButton) return;
         const productoId = parseInt(targetButton.dataset.id);
-        const item = carrito.get(productoId);
-        if (item) {
-            if (targetButton.dataset.action === "increment") {
-                // Evitar sobrepasar stock cuando no se permite venta sin stock
-                if (item.permitir_venta_sin_stock === false || item.permitir_venta_sin_stock === "false") {
-                    if (typeof item.stock === 'number' && item.cantidad >= item.stock) {
-                        showToast("No hay más stock disponible de este producto.", "warning");
-                        return;
-                    }
-                }
-                item.cantidad++;
-            } else if (targetButton.dataset.action === "decrement") {
-                item.cantidad--;
-                if (item.cantidad <= 0) carrito.delete(productoId);
+        const action = targetButton.dataset.action;
+        const delta = action === 'increment' ? 1 : -1;
+        // Sincronizar con el servidor para evitar que ítems "vuelvan" al agregar otros
+        fetch("/cashier/ajustar-cantidad/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken()
+            },
+            body: JSON.stringify({ producto_id: productoId, cantidad: delta, caja_id: cajaId })
+        })
+        .then(async (res) => {
+            const ct = res.headers.get('content-type') || '';
+            const text = await res.text();
+            let data;
+            if (ct.includes('application/json')) {
+                try { data = JSON.parse(text); } catch { data = { error: 'Respuesta inválida del servidor' }; }
+            } else {
+                data = { error: `HTTP ${res.status} - ${text.substring(0, 200)}...` };
             }
+            if (!res.ok || data.error) {
+                throw new Error(data.error || `HTTP ${res.status}`);
+            }
+            // Rehidratar carrito desde servidor
+            carrito.clear();
+            (data.carrito || []).forEach(item => {
+                carrito.set(item.producto_id, {
+                    producto_id: item.producto_id,
+                    nombre: item.nombre,
+                    precio: parseFloat(item.precio),
+                    cantidad: item.cantidad,
+                    stock: (typeof item.stock !== 'undefined') ? item.stock : undefined,
+                    permitir_venta_sin_stock: (typeof item.permitir_venta_sin_stock !== 'undefined') ? item.permitir_venta_sin_stock : true
+                });
+            });
             actualizarCarrito();
-        }
+        })
+        .catch(err => {
+            console.error('Error al ajustar cantidad:', err);
+            showToast(err && err.message ? err.message : 'Error al ajustar cantidad', 'danger');
+        });
     });
 
     document.querySelectorAll("[data-sale-type]").forEach(btn => {
@@ -325,7 +352,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     forma_pago: formaPago,
                     cliente_paga: parseFloat(cantidadPagadaInput.value) || 0,
                     numero_transaccion: (["debito", "credito", "transferencia"].includes(formaPago)) ? numeroTransaccionInput.value.trim() : "",
-                    banco: (formaPago === "transferencia") ? bancoInput.value.trim() : ""
+                    banco: (formaPago === "transferencia") ? bancoInput.value.trim() : "",
+                    caja_id: cajaId
                 })
             });
             const data = await res.json();
@@ -432,9 +460,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         "Content-Type": "application/json",
                         "X-CSRFToken": getCSRFToken()
                     },
-                    body: JSON.stringify({}) 
+                    body: JSON.stringify({ caja_id: cajaId }) 
                 });
-                const data = await res.json();
+                const ct = res.headers.get('content-type') || '';
+                const text = await res.text();
+                let data;
+                if (ct.includes('application/json')) {
+                    try { data = JSON.parse(text); } catch { data = { error: 'Respuesta inválida del servidor' }; }
+                } else {
+                    data = { error: `HTTP ${res.status} - ${text.substring(0, 200)}...` };
+                }
                 if (data.success) {
                     showToast("Caja cerrada exitosamente", "success");
                     if (data.detalle_url) {
@@ -484,7 +519,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const barcode = barcodeInput.value.trim();
         if (!barcode) return;
         try {
-            const res = await fetch(`/cashier/buscar-producto/?q=${barcode}`);
+            const res = await fetch(`/cashier/buscar-producto/?q=${encodeURIComponent(barcode)}${cajaId ? `&caja_id=${encodeURIComponent(cajaId)}` : ''}`);
             const data = await res.json();
             if (data.productos.length > 0) {
                 const product = data.productos[0];

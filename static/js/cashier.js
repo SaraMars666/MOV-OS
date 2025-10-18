@@ -145,45 +145,52 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function agregarAlCarrito(productoId) {
         try {
-            const response = await fetch("/cashier/agregar-al-carrito/", {
+            const res = await fetch("/cashier/agregar-al-carrito/", {
                 method: "POST",
                 credentials: "same-origin",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken()
+                    "X-CSRFToken": getCSRFToken(),
+                    "X-Requested-With": "XMLHttpRequest"
                 },
                 body: JSON.stringify({ producto_id: productoId, caja_id: cajaId })
             });
-            const text = await response.text();
+            const ct = res.headers.get('content-type') || '';
+            const text = await res.text();
             console.log("Respuesta del servidor:", text);
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (err) {
-                console.error("Error al parsear JSON:", err);
+            if (!ct.includes('application/json')) {
+                // Muestra un snippet útil; típicamente 403 CSRF devuelve HTML
+                const snippet = text ? text.substring(0, 200) + '...' : `HTTP ${res.status}`;
+                showToast(`Error ${res.status}: ${snippet}`, 'danger');
                 return;
             }
-            if (data.error) {
-                showToast(data.error, "danger");
-            } else {
-                showToast(data.mensaje || "Producto agregado al carrito", "success");
-                if (data.carrito) {
-                    carrito.clear();
-                    data.carrito.forEach(item => {
-                        carrito.set(item.producto_id, {
-                            producto_id: item.producto_id,
-                            nombre: item.nombre,
-                            precio: parseFloat(item.precio),
-                            cantidad: item.cantidad,
-                            stock: (typeof item.stock !== 'undefined') ? item.stock : undefined,
-                            permitir_venta_sin_stock: (typeof item.permitir_venta_sin_stock !== 'undefined') ? item.permitir_venta_sin_stock : true
-                        });
+            let data;
+            try { data = JSON.parse(text); } catch (err) {
+                showToast('Respuesta inválida del servidor', 'danger');
+                return;
+            }
+            if (!res.ok || data.error) {
+                showToast(data.error || `HTTP ${res.status}`, 'danger');
+                return;
+            }
+            showToast(data.mensaje || "Producto agregado al carrito", "success");
+            if (data.carrito) {
+                carrito.clear();
+                data.carrito.forEach(item => {
+                    carrito.set(item.producto_id, {
+                        producto_id: item.producto_id,
+                        nombre: item.nombre,
+                        precio: parseFloat(item.precio),
+                        cantidad: item.cantidad,
+                        stock: (typeof item.stock !== 'undefined') ? item.stock : undefined,
+                        permitir_venta_sin_stock: (typeof item.permitir_venta_sin_stock !== 'undefined') ? item.permitir_venta_sin_stock : true
                     });
-                    actualizarCarrito();
-                }
+                });
+                actualizarCarrito();
             }
         } catch (err) {
             console.error("Error en la petición fetch:", err);
+            showToast('No se pudo contactar al servidor', 'danger');
         }
     }
 

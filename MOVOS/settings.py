@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'users.middleware.AutoLogoutMiddleware',
 ]
 
 ROOT_URLCONF = 'MOVOS.urls'
@@ -135,3 +136,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Umbral global para marcar stock como "bajo"
 LOW_STOCK_THRESHOLD = int(os.environ.get('LOW_STOCK_THRESHOLD', '2'))
+
+# Auto logout delay
+AUTO_LOGOUT_DELAY = 7200  # 2 horas en segundos

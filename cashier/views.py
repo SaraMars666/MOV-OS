@@ -46,14 +46,9 @@ def _parse_body_json(request):
 
 def get_current_caja(request):
     """
-    Resuelve la caja actual siguiendo este orden:
-    1) caja_id en GET
-    2) caja_id en body JSON (POST/AJAX)
-    3) caja_id en sesión
-    4) primera caja abierta del usuario (vendedor=request.user)
-
-    Valida permisos: si no es superusuario, la caja debe pertenecer al usuario.
-    Retorna instancia de AperturaCierreCaja o None si no aplica.
+    Devuelve la caja abierta actual para el usuario autenticado.
+    - Admins/staff pueden operar cualquier caja.
+    - Vendedores normales solo pueden operar su propia caja y solo en su sucursal asignada.
     """
     caja_id = request.GET.get('caja_id')
     if not caja_id and request.method in ("POST", "PUT", "PATCH"):
@@ -75,18 +70,19 @@ def get_current_caja(request):
 
     if not caja:
         return None
-    
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Permisos:
-    # - Superusuarios y Staff (admins) pueden ver cualquier caja.
-    # - Vendedores normales solo pueden ver su propia caja.
-    if request.user.is_superuser or request.user.is_staff:
-        return caja  # Admins (staff y superuser) pueden ver cualquier caja
 
+    # Permisos:
+    if request.user.is_superuser or request.user.is_staff:
+        return caja  # Admins pueden ver cualquier caja
+
+    # Solo puede operar sobre su propia caja y en su sucursal asignada
     if caja.vendedor_id != request.user.id:
-        return None # Vendedor normal intentando acceder a la caja de otro
-        
-    return caja # Vendedor normal accediendo a su propia caja
+        return None
+    # Si el usuario tiene sucursal asignada, debe coincidir con la de la caja
+    if hasattr(request.user, 'sucursal') and request.user.sucursal_id and caja.sucursal_id != request.user.sucursal_id:
+        return None
+
+    return caja
     # --- FIN DE LA CORRECCIÓN ---
 
 @transaction.atomic
@@ -95,6 +91,7 @@ def get_current_caja(request):
 def cashier_dashboard(request):
     caja_abierta = get_current_caja(request)
     if not caja_abierta:
+        messages.error(request, "No tienes una caja abierta en tu sucursal o no tienes permisos para operar esta caja.")
         return redirect('abrir_caja')
     # Persistir selección en sesión para que endpoints AJAX usen la misma caja
     prev_caja_id = request.session.get('caja_id')
@@ -239,7 +236,7 @@ def cerrar_caja(request):
         if caja_id:
             caja = get_object_or_404(AperturaCierreCaja, id=caja_id)
             if not (request.user.is_superuser or request.user.is_staff or caja.vendedor_id == request.user.id):
-                return JsonResponse({'error': 'No tienes permiso para cerrar esta caja.'}, status=403)
+                return JsonResponse({'error': 'No tienes una caja abierta en tu sucursal o no tienes permisos para operar esta caja.'}, status=403)
         else:
             caja = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
             if not caja:
@@ -486,6 +483,10 @@ def ajustar_cantidad(request):
         producto_id = int(data.get('producto_id'))
         cambio_cantidad = int(data.get('cantidad'))
         producto = get_object_or_404(Product, id=producto_id)
+        # Validar caja abierta
+        caja_abierta = get_current_caja(request)
+        if not caja_abierta:
+            return JsonResponse({'error': 'No tienes una caja abierta en tu sucursal o no tienes permisos para operar esta caja.'}, status=403)
         carrito = request.session.get('carrito', [])
         found = False
         for item in carrito:
@@ -509,7 +510,7 @@ def ajustar_cantidad(request):
 def agregar_al_carrito(request):
     caja_abierta = get_current_caja(request)
     if not caja_abierta:
-        return JsonResponse({'error': 'No tienes una caja abierta.'}, status=403)
+        return JsonResponse({'error': 'No tienes una caja abierta en tu sucursal o no tienes permisos para operar esta caja.'}, status=403)
     if request.method != "POST":
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     try:

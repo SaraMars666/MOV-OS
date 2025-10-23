@@ -75,10 +75,19 @@ def get_current_caja(request):
 
     if not caja:
         return None
-    # Permisos: no superusuario solo accede a su propia caja
-    if not request.user.is_superuser and caja.vendedor_id != request.user.id:
-        return None
-    return caja
+    
+    # --- INICIO DE LA CORRECCIÓN ---
+    # Permisos:
+    # - Superusuarios y Staff (admins) pueden ver cualquier caja.
+    # - Vendedores normales solo pueden ver su propia caja.
+    if request.user.is_superuser or request.user.is_staff:
+        return caja  # Admins (staff y superuser) pueden ver cualquier caja
+
+    if caja.vendedor_id != request.user.id:
+        return None # Vendedor normal intentando acceder a la caja de otro
+        
+    return caja # Vendedor normal accediendo a su propia caja
+    # --- FIN DE LA CORRECCIÓN ---
 
 @transaction.atomic
 @login_required
@@ -568,62 +577,84 @@ def delete_all_sales_and_cash_history(request):
 
 @login_required
 def abrir_caja(request):
-    if not request.user.is_superuser:
-        try:
-            vendedor = request.user.vendedor
-        except Exception:
-            messages.error(request, "No se encontró el perfil de vendedor asociado.")
-            return redirect('home')
-        sucursales = vendedor.sucursales_autorizadas.all()
-    else:
+    # --- INICIO DE LA CORRECCIÓN ---
+    # La lógica anterior que buscaba `request.user.vendedor` (un perfil) era
+    # inconsistente con el resto de la app, que usa `request.user` como el vendedor.
+    # También fallaba para usuarios "creados de cero" que no tenían ese perfil.
+    
+    # Lógica simplificada:
+    # 1. Si es superusuario, puede elegir cualquier sucursal.
+    # 2. Si es un vendedor normal, solo puede abrir caja en la sucursal
+    #    asignada a su perfil de usuario (`request.user.sucursal`).
+
+    # Primero, verificar si el usuario es admin/staff
+    if request.user.is_superuser or request.user.is_staff:
+        # Los admins pueden elegir cualquier sucursal
         sucursales = Sucursal.objects.all()
+        # Los admins no deben tener una sucursal fija asignada (o sí, pero pueden elegir)
+        sucursal_fija = None
+    else:
+        # Es un vendedor normal. Debe tener una sucursal asignada.
+        if not request.user.sucursal:
+            messages.error(request, "Tu cuenta no está asignada a ninguna sucursal. Contacta a un administrador.")
+            return redirect('home') # O a la página de perfil
+        
+        # El vendedor solo puede ver su propia sucursal
+        sucursales = [request.user.sucursal]
+        sucursal_fija = request.user.sucursal
 
     if request.method == "POST":
         sucursal_id = request.POST.get('sucursal')
         efectivo_inicial = request.POST.get('efectivo_inicial', '0')
+
         if not sucursal_id:
             messages.error(request, "Seleccione una sucursal.")
             return redirect('abrir_caja')
+
         sucursal = get_object_or_404(Sucursal, id=sucursal_id)
-        # Validar que el usuario no admin esté autorizado para la sucursal seleccionada
-        if not request.user.is_superuser:
-            try:
-                vendedor = request.user.vendedor
-                if not vendedor.sucursales_autorizadas.filter(id=sucursal.id).exists():
-                    messages.error(request, "No está autorizado para abrir caja en esta sucursal.")
-                    return redirect('abrir_caja')
-            except Exception:
-                messages.error(request, "No se encontró el perfil de vendedor asociado.")
-                return redirect('home')
+
+        # Validar que el vendedor esté autorizado para esta sucursal
+        if not (request.user.is_superuser or request.user.is_staff):
+            if sucursal.id != request.user.sucursal_id:
+                messages.error(request, "No estás autorizado para abrir caja en esta sucursal.")
+                return redirect('abrir_caja')
+        
         try:
             with transaction.atomic():
                 # Regla 1: Sólo una caja abierta por sucursal
                 existente_en_sucursal = AperturaCierreCaja.objects.filter(sucursal=sucursal, estado='abierta').first()
                 if existente_en_sucursal:
-                    # Mostrar aviso y quedarse en la vista de apertura para evitar errores dentro del cajero
                     messages.warning(request, f"No se puede abrir caja: ya existe una caja abierta en la sucursal {sucursal.nombre} (Caja #{existente_en_sucursal.id}).")
-                    context = {'sucursales': sucursales}
+                    context = {'sucursales': sucursales, 'sucursal_fija': sucursal_fija}
                     return render(request, 'cashier/abrir_caja.html', context)
 
                 # Regla 2: Usuario no admin sólo puede tener una caja abierta total
-                if not request.user.is_superuser:
+                if not (request.user.is_superuser or request.user.is_staff):
                     abierta_usuario = AperturaCierreCaja.objects.filter(vendedor=request.user, estado='abierta').first()
                     if abierta_usuario:
                         messages.info(request, f"Ya tienes una caja abierta (Caja #{abierta_usuario.id}).")
-                        # No entrar al cajero aquí; mostrar aviso y permanecer
-                        context = {'sucursales': sucursales}
+                        context = {'sucursales': sucursales, 'sucursal_fija': sucursal_fija}
                         return render(request, 'cashier/abrir_caja.html', context)
+                
                 caja = AperturaCierreCaja.objects.create(
                     vendedor=request.user,
                     sucursal=sucursal,
                     efectivo_inicial=efectivo_inicial
                 )
             messages.success(request, f"Caja abierta en sucursal {sucursal.nombre}.")
+            # Redirigir al dashboard, que ahora usará get_current_caja para encontrar esta nueva caja
             return redirect('cashier_dashboard')
+        
         except Exception as e:
             messages.error(request, f"Error al abrir caja: {e}")
-    context = {'sucursales': sucursales}
+
+    context = {
+        'sucursales': sucursales,
+        'sucursal_fija': sucursal_fija # Para pre-seleccionar la sucursal si es un vendedor
+    }
     return render(request, 'cashier/abrir_caja.html', context)
+    # --- FIN DE LA CORRECCIÓN ---
+
 
 @login_required
 def advanced_reports(request):
@@ -673,10 +704,10 @@ def advanced_reports(request):
     promedio_ganancia_neta = Decimal('0.00')
     promedio_porcentaje_ganancia = Decimal('0.00')
     best_selling = VentaDetalle.objects.filter(venta__in=ventas_qs) \
-                    .values('producto__nombre') \
-                    .annotate(total_cantidad=Sum('cantidad')) \
-                    .order_by('-total_cantidad') \
-                    .first()
+                     .values('producto__nombre') \
+                     .annotate(total_cantidad=Sum('cantidad')) \
+                     .order_by('-total_cantidad') \
+                     .first()
     best_selling_product = best_selling['producto__nombre'] if best_selling else "N/A"
     best_selling_quantity = best_selling['total_cantidad'] if best_selling else 0
     sales_by_payment_type = Venta.objects.filter(

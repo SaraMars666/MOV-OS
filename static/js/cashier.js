@@ -161,6 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!ct.includes('application/json')) {
                 // Muestra un snippet útil; típicamente 403 CSRF devuelve HTML
                 const snippet = text ? text.substring(0, 200) + '...' : `HTTP ${res.status}`;
+                console.error('[cashier] non-json response from /cashier/agregar-al-carrito/', { status: res.status, snippet, full: text });
                 showToast(`Error ${res.status}: ${snippet}`, 'danger');
                 return;
             }

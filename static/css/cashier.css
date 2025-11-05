@@ -104,3 +104,52 @@
     white-space: normal;      /* Permite que el texto se ajuste en varias líneas si es necesario */
     text-align: center;
 }
+
+/* Light theme overrides scoped to cashier container */
+.cashier-container.cashier-light {
+    background-color: #f4f7fb; /* pale background inside cashier area */
+    color: #0f1724; /* dark text */
+}
+.cashier-container.cashier-light .card {
+    background-color: #ffffff;
+    color: #0f1724;
+    border: 1px solid #e6eef7;
+    box-shadow: 0 6px 24px rgba(16,24,40,0.06);
+}
+.cashier-container.cashier-light .card-title {
+    color: #0b1220;
+}
+.cashier-container.cashier-light .table-dark,
+.cashier-container.cashier-light .table-dark td,
+.cashier-container.cashier-light .table-dark th {
+    background-color: transparent;
+    color: #0f1724;
+}
+.cashier-container.cashier-light .table-responsive table thead { color: #0b1220; }
+.cashier-container.cashier-light .form-control {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #0b1220;
+}
+.cashier-container.cashier-light .form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 0.15rem rgba(37,99,235,0.15);
+}
+.cashier-container.cashier-light .btn-group .btn {
+    background-color: #eef2ff;
+    color: #0b1220;
+}
+.cashier-container.cashier-light .btn-group .btn.active {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+.cashier-container.cashier-light .btn-success { background-color: #16a34a; }
+.cashier-container.cashier-light .btn-danger { background-color: #dc2626; }
+.cashier-container.cashier-light .badge { background-color: #eef2ff; color: #0b1220; }
+
+/* Ensure the payment panel stands out in light mode */
+.cashier-container.cashier-light .payment-method-btn {
+    background-color: #eef2ff;
+    color: #0b1220;
+    border: 1px solid #c7d2fe;
+}

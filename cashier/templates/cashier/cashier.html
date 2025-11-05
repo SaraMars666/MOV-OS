@@ -37,15 +37,22 @@
 {% endblock %}
 
 {% block content %}
-<div class="container cashier-container">
-    <div class="text-center mb-4">
-        <h2>Bienvenido, {{ user.username }}</h2>
-        <h3>Modo Cajero</h3>
+<div class="container-fluid cashier-container" style="width:100%; margin:0 auto;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Bienvenido, {{ user.username }}</h2>
+            <h3>Modo Cajero</h3>
             {% if caja_abierta and caja_abierta.sucursal %}
             <div class="mt-2">
                 <span class="badge bg-info text-dark" title="Sucursal activa">Sucursal: {{ caja_abierta.sucursal.nombre }}</span>
             </div>
             {% endif %}
+        </div>
+        <div class="ms-3">
+            <!-- Theme toggle temporarily disabled per user request
+            <button id="toggle-theme" class="btn btn-outline-light">Modo claro</button>
+            -->
+        </div>
     </div>
     <!-- Exponer ID de caja actual para las solicitudes AJAX -->
     {% if caja_abierta %}
@@ -65,9 +72,9 @@
         {% endfor %}
     </div>
 
-    <div class="row justify-content-center g-3">
-        <!-- Buscar productos -->
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
+    <div class="row g-3">
+    <!-- Buscar productos -->
+    <div class="col-12 col-md-4 col-lg-4 mb-4">
             <div class="card p-3 h-100">
                 <h4 class="card-title">Buscar productos</h4>
                 <form id="product-search-form" class="mb-3">
@@ -80,8 +87,8 @@
             </div>
         </div>
 
-        <!-- Carrito de Compras -->
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
+    <!-- Carrito de Compras -->
+    <div class="col-12 col-md-4 col-lg-4 mb-4">
             <div class="card p-3 h-100 d-flex flex-column">
                 <h4 class="card-title">Carrito de Compras</h4>
                 <input type="text" id="barcode-input" class="form-control mb-2" placeholder="Código de barras" aria-label="Ingresar código de barras">
@@ -109,8 +116,8 @@
             </div>
         </div>
 
-        <!-- Opciones de Pago y Tipo de Venta -->
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
+    <!-- Opciones de Pago y Tipo de Venta -->
+    <div class="col-12 col-md-4 col-lg-4 mb-4">
             <div class="card p-3 h-100">
                 <h4 class="card-title">Opciones de Pago</h4>
                 <!-- Tipo de Venta -->
@@ -241,32 +248,114 @@
                 updateMobilePadding();
                 window.addEventListener('resize', updateMobilePadding);
 
-            // Sync total to mobile bar
+            // Sync total to mobile bar (with diagnostics)
             (function syncTotals(){
                 const source = document.getElementById('total-price');
                 const target = document.getElementById('total-price-mobile');
-                if (!source || !target) return;
-                const obs = new MutationObserver(() => { target.textContent = source.textContent; });
-                obs.observe(source, { characterData: true, subtree: true, childList: true });
-                // Initialize immediately
-                target.textContent = source.textContent;
+                if (!source) {
+                    console.error('[cashier] total-price element not found');
+                    return;
+                }
+                if (!target) {
+                    console.error('[cashier] total-price-mobile element not found');
+                    return;
+                }
+                try {
+                    const obs = new MutationObserver(() => { target.textContent = source.textContent; });
+                    obs.observe(source, { characterData: true, subtree: true, childList: true });
+                    // Initialize immediately
+                    target.textContent = source.textContent;
+                    console.log('[cashier] syncTotals initialized');
+                } catch (err) {
+                    console.error('[cashier] error initializing syncTotals', err);
+                }
             })();
 
-            // Forward mobile buttons to existing actions
-                    const mobileConfirm = document.getElementById('mobile-confirmar-compra');
-                    const mainConfirm = document.getElementById('confirmar-compra');
-                    const auxConfirm = document.getElementById('confirmar-compra-aux');
-                    if (mobileConfirm && mainConfirm) {
-                        mobileConfirm.addEventListener('click', () => mainConfirm.click());
-                    }
-                    if (auxConfirm && mainConfirm) {
-                        auxConfirm.addEventListener('click', () => mainConfirm.click());
-                    }
+            // Forward mobile buttons to existing actions (with diagnostics)
+            (function wireMobileButtons(){
+                const mobileConfirm = document.getElementById('mobile-confirmar-compra');
+                const mainConfirm = document.getElementById('confirmar-compra');
+                const auxConfirm = document.getElementById('confirmar-compra-aux');
+                if (mobileConfirm && mainConfirm) {
+                    mobileConfirm.addEventListener('click', () => mainConfirm.click());
+                    console.log('[cashier] wired mobile-confirm to main confirm');
+                } else {
+                    if (!mobileConfirm) console.error('[cashier] mobile-confirmar-compra not found');
+                    if (!mainConfirm) console.error('[cashier] confirmar-compra (main) not found');
+                }
+                if (auxConfirm && mainConfirm) {
+                    auxConfirm.addEventListener('click', () => mainConfirm.click());
+                    console.log('[cashier] wired aux confirm to main confirm');
+                } else if (auxConfirm && !mainConfirm) {
+                    console.error('[cashier] aux confirm found but main confirm missing');
+                }
 
-            const mobileClose = document.getElementById('mobile-cerrar-caja');
-            const closeBtn = document.getElementById('close-cash-button');
-            if (mobileClose && closeBtn) {
-                mobileClose.addEventListener('click', () => closeBtn.click());
-            }
+                const mobileClose = document.getElementById('mobile-cerrar-caja');
+                const closeBtn = document.getElementById('close-cash-button');
+                if (mobileClose && closeBtn) {
+                    mobileClose.addEventListener('click', () => closeBtn.click());
+                    console.log('[cashier] wired mobile close to close button');
+                } else {
+                    if (!mobileClose) console.error('[cashier] mobile-cerrar-caja not found');
+                    if (!closeBtn) console.error('[cashier] close-cash-button not found');
+                }
+            })();
         </script>
+        <!-- Theme toggle temporarily disabled per user request
+        <script>
+            // Theme toggle for cashier (light / dark) with diagnostics
+            document.addEventListener('DOMContentLoaded', function(){
+                const btn = document.getElementById('toggle-theme');
+                const container = document.querySelector('.cashier-container');
+                const storageKey = 'cashierTheme';
+                if (!btn) {
+                    console.error('[cashier] toggle-theme button (#toggle-theme) not found');
+                }
+                if (!container) {
+                    console.error('[cashier] .cashier-container not found');
+                }
+                function applyTheme() {
+                    try {
+                        const theme = localStorage.getItem(storageKey) || 'dark';
+                        console.log('[cashier] applyTheme current:', theme);
+                        if (theme === 'light') {
+                            if (container) container.classList.add('cashier-light');
+                            if (btn) {
+                                btn.textContent = 'Modo oscuro';
+                                btn.classList.remove('btn-outline-light');
+                                btn.classList.add('btn-outline-dark');
+                            }
+                        } else {
+                            if (container) container.classList.remove('cashier-light');
+                            if (btn) {
+                                btn.textContent = 'Modo claro';
+                                btn.classList.remove('btn-outline-dark');
+                                btn.classList.add('btn-outline-light');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[cashier] error applying theme', err);
+                    }
+                }
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        console.log('[cashier] toggle-theme clicked');
+                        const current = localStorage.getItem(storageKey) || 'dark';
+                        const next = current === 'dark' ? 'light' : 'dark';
+                        console.log('[cashier] theme change', { from: current, to: next });
+                        try {
+                            localStorage.setItem(storageKey, next);
+                        } catch (err) {
+                            console.error('[cashier] could not write to localStorage', err);
+                        }
+                        applyTheme();
+                    });
+                } else {
+                    console.error('[cashier] cannot attach click handler because toggle button is missing');
+                }
+                console.log('[cashier] applying theme on load');
+                applyTheme();
+            });
+        </script>
+        -->
 {% endblock %}

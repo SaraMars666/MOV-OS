@@ -245,11 +245,8 @@ def cerrar_caja(request):
             return JsonResponse({'error': 'La caja ya está cerrada.'}, status=400)
         # Calcular totales del periodo de la caja
         fecha_fin = timezone.now()
-        ventas_qs = Venta.objects.filter(
-            empleado=caja.vendedor,
-            fecha__gte=caja.apertura,
-            fecha__lte=fecha_fin
-        )
+        # Usar la relación explícita a la caja para evitar incluir ventas de otros periodos
+        ventas_qs = Venta.objects.filter(caja=caja)
         total_ventas = ventas_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         ventas_efectivo = ventas_qs.filter(forma_pago='efectivo').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
         ventas_debito = ventas_qs.filter(forma_pago='debito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
@@ -288,12 +285,8 @@ def detalle_caja(request, caja_id):
     if caja.estado == 'abierta' and request.user.is_superuser:
         return redirect(f"{reverse('cashier_dashboard')}?caja_id={caja.id}")
     # Establecemos el rango de ventas: desde la apertura hasta la fecha de cierre (o ahora si está abierta)
-    fecha_fin = caja.cierre if caja.cierre else timezone.now()
-    ventas_qs = Venta.objects.filter(
-        empleado=caja.vendedor,
-        fecha__gte=caja.apertura,
-        fecha__lte=fecha_fin
-    )
+    # Consultar ventas ligadas a esta caja (más robusto que filtrar por empleado+fechas)
+    ventas_qs = Venta.objects.filter(caja=caja)
     ventas_total = ventas_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     ventas_efectivo = ventas_qs.filter(forma_pago='efectivo').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     ventas_debito = ventas_qs.filter(forma_pago='debito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
@@ -346,19 +339,17 @@ def print_venta(request, venta_id):
 @login_required
 def print_caja(request, caja_id):
     caja = get_object_or_404(AperturaCierreCaja, id=caja_id)
-    fecha_fin = caja.cierre if caja.cierre else timezone.now()
-    ventas_qs = Venta.objects.filter(
-        empleado=caja.vendedor,
-        fecha__gte=caja.apertura,
-        fecha__lte=fecha_fin
-    )
+    # Usar ventas asociadas a la caja para el informe de impresión
+    ventas_qs = Venta.objects.filter(caja=caja)
     ventas_total = ventas_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     ventas_efectivo = ventas_qs.filter(forma_pago='efectivo').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     ventas_debito = ventas_qs.filter(forma_pago='debito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     ventas_credito = ventas_qs.filter(forma_pago='credito').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     ventas_transferencia = ventas_qs.filter(forma_pago='transferencia').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     vuelto_total = ventas_qs.aggregate(total=Sum('vuelto_entregado'))['total'] or Decimal('0.00')
-    efectivo_final_calc = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo - vuelto_total
+    # El efectivo final debe ser efectivo_inicial + ventas_efectivo.
+    # No restamos 'vuelto_total' porque las ventas en efectivo ya representan el neto que queda en caja.
+    efectivo_final_calc = (caja.efectivo_inicial or Decimal('0.00')) + ventas_efectivo
     ctx = {
         'caja': caja,
         'formatted_efectivo_inicial': "$" + format_clp(caja.efectivo_inicial or Decimal('0.00')),

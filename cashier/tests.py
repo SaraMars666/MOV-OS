@@ -8,6 +8,7 @@ from tests.factories import (
 	open_caja, close_caja, make_sale
 )
 from cashier.models import Venta, AperturaCierreCaja
+from django.db.models import Sum
 
 User = get_user_model()
 
@@ -57,3 +58,21 @@ class CashierFlowTests(TestCase):
 		self.client.force_login(self.user_cajero)
 		resp = self.client.get('/reports/advanced/', follow=False)
 		self.assertNotEqual(resp.status_code, 200, "Un usuario no staff no debería ver reports avanzados")
+
+	def test_efectivo_final_calculation(self):
+		# Abrir caja con efectivo inicial, crear ventas en efectivo y con tarjeta, cerrar caja vía endpoint
+		caja = open_caja(self.user_admin, self.sucursal, efectivo_inicial=Decimal('10000'))
+		# Venta en efectivo 1
+		v1 = make_sale(self.user_admin, self.sucursal, [(self.prod_a, 2)], forma_pago='efectivo', caja=caja)
+		# Venta en efectivo 2 (con vuelto simulado por total > cliente_paga handled by view, but here we set total directly)
+		v2 = make_sale(self.user_admin, self.sucursal, [(self.prod_b, 1)], forma_pago='efectivo', caja=caja)
+		# Venta en tarjeta (no afecta efectivo final)
+		v3 = make_sale(self.user_admin, self.sucursal, [(self.prod_b, 1)], forma_pago='debito', caja=caja)
+		self.client.force_login(self.user_admin)
+		resp = self.client.post('/cashier/cerrar_caja/', data='{"caja_id": %d}' % caja.id, content_type='application/json')
+		self.assertEqual(resp.status_code, 200)
+		caja.refresh_from_db()
+		# Calcular ventas en efectivo esperadas
+		expected_ventas_efectivo = Venta.objects.filter(caja=caja, forma_pago='efectivo').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
+		expected_efectivo_final = (caja.efectivo_inicial or Decimal('0.00')) + expected_ventas_efectivo
+		self.assertEqual(caja.efectivo_final, expected_efectivo_final)

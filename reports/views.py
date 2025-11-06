@@ -877,45 +877,16 @@ def caja_report(request, caja_id):
     Vista para mostrar el detalle de una caja cerrada usando el template 'reporte_caja.html'.
     """
     caja = get_object_or_404(AperturaCierreCaja, id=caja_id)
-    fecha_fin = caja.cierre if caja.cierre else timezone.now()
-    ventas_total = Venta.objects.filter(
-        empleado=caja.vendedor,
-        fecha__gte=caja.apertura,
-        fecha__lte=fecha_fin
-    ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    ventas_efectivo = Venta.objects.filter(
-        empleado=caja.vendedor,
-        fecha__gte=caja.apertura,
-        fecha__lte=fecha_fin,
-        forma_pago='efectivo'
-    ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    ventas_debito = Venta.objects.filter(
-        empleado=caja.vendedor,
-        fecha__gte=caja.apertura,
-        fecha__lte=fecha_fin,
-        forma_pago='debito'
-    ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    ventas_credito = Venta.objects.filter(
-        empleado=caja.vendedor,
-        fecha__gte=caja.apertura,
-        fecha__lte=fecha_fin,
-        forma_pago='credito'
-    ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    ventas_transferencia = Venta.objects.filter(
-        empleado=caja.vendedor,
-        fecha__gte=caja.apertura,
-        fecha__lte=fecha_fin,
-        forma_pago='transferencia'
-    ).aggregate(total=Sum('total'))['total'] or Decimal('0.00')
-    
-    # Asignar atributos formateados
+    # Usar los totales persistidos en la caja cuando estén disponibles
     caja.formatted_efectivo_inicial = "$" + format_clp(caja.efectivo_inicial or 0)
-    caja.formatted_total_ventas_debito = "$" + format_clp(ventas_debito)
-    caja.formatted_total_ventas_credito = "$" + format_clp(ventas_credito)
-    caja.formatted_total_ventas_efectivo = "$" + format_clp(ventas_efectivo)
+    caja.formatted_total_ventas_debito = "$" + format_clp(caja.total_ventas_debito or 0)
+    caja.formatted_total_ventas_credito = "$" + format_clp(caja.total_ventas_credito or 0)
+    caja.formatted_total_ventas_efectivo = "$" + format_clp(caja.total_ventas_efectivo or 0)
     caja.formatted_vuelto_entregado = "$" + format_clp(caja.vuelto_entregado or 0)
     caja.formatted_efectivo_final = "$" + format_clp(caja.efectivo_final or caja.efectivo_inicial or 0)
-    caja.formatted_ventas_totales = "$" + format_clp(ventas_total)
+    caja.formatted_ventas_totales = "$" + format_clp(caja.ventas_totales or 0)
+    # Para transferencias mantenemos el cálculo puntual (no hay campo persistido para transferencias)
+    ventas_transferencia = Venta.objects.filter(caja=caja, forma_pago='transferencia').aggregate(total=Sum('total'))['total'] or Decimal('0.00')
     caja.formatted_total_ventas_transferencia = "$" + format_clp(ventas_transferencia)
     
     return render(request, 'reports/reporte_caja.html', {'caja': caja})

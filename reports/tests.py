@@ -1,4 +1,36 @@
 from django.test import TestCase
+from decimal import Decimal
+from django.contrib.auth import get_user_model
+from tests.factories import create_sucursal, create_user, create_product, open_caja, make_sale
+from cashier.models import AperturaCierreCaja, Venta
+from django.db.models import Sum
+
+User = get_user_model()
+
+
+class ReportsPersistenceTests(TestCase):
+    def setUp(self):
+        self.sucursal = create_sucursal('Sucursal Test')
+        self.admin = create_user('admin_reports', is_staff=True)
+        self.prod = create_product('P1', 'Prod1', precio_compra=Decimal('100'), precio_venta=Decimal('1000'))
+
+    def test_reports_use_persisted_efectivo_final(self):
+        # Abrir caja y crear ventas
+        caja = open_caja(self.admin, self.sucursal, efectivo_inicial=Decimal('5000'))
+        v1 = make_sale(self.admin, self.sucursal, [(self.prod, 2)], forma_pago='efectivo', caja=caja)
+        v2 = make_sale(self.admin, self.sucursal, [(self.prod, 1)], forma_pago='debito', caja=caja)
+        # Cerrar caja a través del endpoint (simulate closure)
+        self.client.force_login(self.admin)
+        resp = self.client.post('/cashier/cerrar_caja/', data='{"caja_id": %d}' % caja.id, content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        caja.refresh_from_db()
+        # Now request the caja report and ensure the template includes the persisted efectivo_final
+        resp2 = self.client.get(f'/reports/caja/{caja.id}/reporte/')
+        self.assertEqual(resp2.status_code, 200)
+        expected = "$" + ("{:,.0f}".format(float(caja.efectivo_final))).replace(",", ".")
+        # Response content should contain the formatted efectivo_final
+        self.assertIn(expected.encode('utf-8'), resp2.content)
+from django.test import TestCase
 from django.utils import timezone
 from decimal import Decimal
 import datetime
